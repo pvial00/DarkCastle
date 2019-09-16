@@ -1,3 +1,5 @@
+v0.5.5 - Critical fix to Specjal's key scheduler.
+
 v0.5.4 - ZanderFish3 final design.  Specjal redesign.  Add 512 and 1024 bit ZanderFish3.  Fixed Spock's key scheduler for 256 bit keys.  Drop 128 bit support.  Drop ZanderFishU and WildThing.  Docs uploaded.  ZanderFish3 and Specjal docs coming very soon.
 
 v0.5.3 - Fixed ZanderFish2 on all platforms

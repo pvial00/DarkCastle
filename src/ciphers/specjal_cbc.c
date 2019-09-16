@@ -193,6 +193,24 @@ void specjal_ksa(struct specjal_state *state, unsigned char * key, int keylen, i
         SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7], rounds);
         SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11], rounds);
         SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15], rounds);
+        for (int x = 0; x < 16; x++) {
+            state->Kc[r] ^= (uint64_t)k[x];
+        }
+    }
+    for (int r = 0; r < rounds; r++) {
+        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3], rounds);
+        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7], rounds);
+        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11], rounds);
+        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15], rounds);
+        for (int x = 0; x < 16; x++) {
+            state->Kd[r] ^= (uint64_t)k[x];
+        }
+    }
+    for (int r = 0; r < rounds; r++) {
+        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3], rounds);
+        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7], rounds);
+        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11], rounds);
+        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15], rounds);
         state->d[r][0] = (uint64_t)k[0] ^ (uint64_t)k[4] ^ (uint64_t)k[8] ^ (uint64_t)k[12];
         state->d[r][1] = (uint64_t)k[1] ^ (uint64_t)k[5] ^ (uint64_t)k[9] ^ (uint64_t)k[13];
         state->d[r][2] = (uint64_t)k[2] ^ (uint64_t)k[6] ^ (uint64_t)k[10] ^ (uint64_t)k[14];
