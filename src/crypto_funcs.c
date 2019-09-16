@@ -36,15 +36,6 @@ void * key_wrap_encrypt(unsigned char * keyprime, int key_length, unsigned char 
             K[i] = K[i] ^ key[i];
         }
     }
-    else if (keylen == 16) {
-        amagus_random(keyprime, key_length);
-        amagus_random(nonce, keywrap1024_ivlen);
-        memcpy(K, keyprime, key_length);
-        wild_crypt(K, key, nonce, key_length);
-        for (int i = 0; i < key_length; i++) {
-            K[i] = K[i] ^ key[i];
-        }
-    }
 }
 
 void * key_wrap_decrypt(unsigned char * keyprime, int key_length, unsigned char * key, unsigned char * nonce) {
@@ -65,11 +56,5 @@ void * key_wrap_decrypt(unsigned char * keyprime, int key_length, unsigned char 
             keyprime[i] = keyprime[i] ^ key[i];
         }
         uvajda_crypt(keyprime, key, nonce, key_length);
-    }
-    else if (keylen == 16) {
-        for (int i = 0; i < key_length; i++) {
-            keyprime[i] = keyprime[i] ^ key[i];
-        }
-        wild_crypt(keyprime, key, nonce, key_length);
     }
 }

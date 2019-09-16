@@ -108,36 +108,74 @@ void spock_ksa(struct spock_state *state, unsigned char * key, int keylen, int r
     }
     c = 0;
     b = 0;
-    for (int r = 0; r < (rounds / inc); r++) {
-        m = 0;
-        for (int i = 0; i < (inc / 4); i++) {
-	    roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-            m += 4;
+    if (keylen == 16) {
+        for (int r = 0; r < (rounds / inc); r++) {
+            m = 0;
+            for (int i = 0; i < (inc / 4); i++) {
+	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
+                m += 4;
+            }
+            for (int i = 0; i < inc; i++) {
+                state->Ka[c] = k[i];
+	        c += 1;
+            }
+            m = 0;
+            for (int i = 0; i < (inc / 4); i++) {
+	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
+                m += 4;
+            }
+            for (int i = 0; i < inc; i++) {
+                state->Kb[b] = k[i];
+	        b += 1;
+            }
         }
-        for (int i = 0; i < inc; i++) {
-            state->Ka[c] = k[i];
-	    c += 1;
-        }
-        m = 0;
-        for (int i = 0; i < (inc / 4); i++) {
-	    roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-            m += 4;
-        }
-        for (int i = 0; i < inc; i++) {
-            state->Kb[b] = k[i];
-	    b += 1;
+        for (int r = 0; r < rounds; r++) {
+            m = 0;
+            for (int i = 0; i < (inc / 4); i++) {
+	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
+                m += 4;
+            }
+            state->d[r][0] = k[0];
+            state->d[r][1] = k[1];
+            state->d[r][2] = k[2];
+            state->d[r][3] = k[3];
         }
     }
-    for (int r = 0; r < rounds; r++) {
-        m = 0;
-        for (int i = 0; i < (inc / 4); i++) {
-	    roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-            m += 4;
+    else if (keylen == 32) {
+        for (int r = 0; r < (rounds / inc); r++) {
+            m = 0;
+            for (int i = 0; i < (inc / 4); i++) {
+	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
+	        roundF(&tempstate, &k[m+4], &k[m+5], &k[m+6], &k[m+7], rounds);
+                m += 4;
+            }
+            for (int i = 0; i < inc; i++) {
+                state->Ka[c] = k[i];
+	        c += 1;
+            }
+            m = 0;
+            for (int i = 0; i < (inc / 4); i++) {
+	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
+	        roundF(&tempstate, &k[m+4], &k[m+5], &k[m+6], &k[m+7], rounds);
+                m += 4;
+            }
+            for (int i = 0; i < inc; i++) {
+                state->Kb[b] = k[i];
+	        b += 1;
+            }
         }
-        state->d[r][0] = k[0];
-        state->d[r][1] = k[1];
-        state->d[r][2] = k[2];
-        state->d[r][3] = k[3];
+        for (int r = 0; r < rounds; r++) {
+            m = 0;
+            for (int i = 0; i < (inc / 4); i++) {
+	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
+	        roundF(&tempstate, &k[m+4], &k[m+5], &k[m+6], &k[m+7], rounds);
+                m += 4;
+            }
+            state->d[r][0] = (uint64_t)k[0] + (uint64_t)k[4];
+            state->d[r][1] = (uint64_t)k[1] + (uint64_t)k[5];
+            state->d[r][2] = (uint64_t)k[2] + (uint64_t)k[6];
+            state->d[r][3] = (uint64_t)k[3] + (uint64_t)k[7];
+        }
     }
 }
 

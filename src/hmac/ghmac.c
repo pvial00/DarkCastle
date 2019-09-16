@@ -15,7 +15,7 @@ uint32_t rotl(uint32_t v, int c) {
     return ((v << c) | (v >> (32 - c)));
 }
 */
-void * ganja_hmac(unsigned char *data, long long datalen, unsigned char * D, unsigned char * key, int keylen, unsigned char * salt) {
+void * ganja_hmac(unsigned char *data, long long datalen, unsigned char * D, unsigned char * key, int keylen) {
     int rounds = 8 * 8;
     uint32_t H[8] = {0};
     uint32_t temp32[8] = {0};

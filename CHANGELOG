@@ -1,21 +1,23 @@
-v0.4 - Added nonce/iv for key wrapping.  Dropped algorithms BlueDye, Wrzeszcz, the original ZanderFish.  Corrected key wrapping for Specjal at 512 and 1024 bit key lengths.  Replaced wrzeszcz_random with amagus_random.  This version is not backward compatible and is considered stable.
+v0.5.4 - ZanderFish3 final design.  Specjal redesign.  Add 512 and 1024 bit ZanderFish3.  Fixed Spock's key scheduler for 256 bit keys.  Drop 128 bit support.  Drop ZanderFishU and WildThing.  Docs uploaded.  ZanderFish3 and Specjal docs coming very soon.
 
-v0.4.1 - Add Zanderfish2 in OFB mode - 256 bit
-
-v0.4.3 - Fix WildThing, Drop Ganja as a cipher, add ZanderFish3 256 bit, ZanderFish code cleanup
-
-v0.4.4 - More code cleanup, Drop Wild and leave Spock as the only 128 bit cipher, Add ZanderFish2 CTR mode
-
-v0.4.5 fix 0.4.4, Wild is still in the code base as the key wrapper for Spock
-
-v0.4.6 - Fixed mixing algorithm in ZanderFish3 and tweak placement
-
-v0.4.7 - Added some word swaps to ZanderFish3.  Should be the last change in the design.
-
-v0.5 - New cipher designs for Amagus, Uvajda, Specjal and ZanderFish3.  Dieharder testing 100 iterations for each cipher and published the dieharder results in each cipher's repo.  Changed castlesmoke.py to clean up after itself.  Zander3 got a new mixing function and formula to calculate rounds based on key length.  Uvajda now uses an addition operation instead of XOR with the previous state.  Amagus has a transposition layer added. Specjal's round function was corrected. This version is not backward compatible and this is hopefully the final design of the ciphers. Also, Uvajda got converted to using structs.
-
-v0.5.1 - Fix critical bug in ZanderFish2/C/U's S-Box generation. Also updated the round key function to be the latest Amagus function.  ZanderFish2 is complete and self audited.  Update mixing function to ZanderFish3 which remains under construction as the design solidifies through the vetting process.
+v0.5.3 - Fixed ZanderFish2 on all platforms
 
 v0.5.2 - Drop ZanderFishC support
 
-v0.5.3 - Fixed ZanderFish2 on all platforms
+v0.5.1 - Fix critical bug in ZanderFish2/C/U's S-Box generation. Also updated the round key function to be the latest Amagus function.  ZanderFish2 is complete and self audited.  Update mixing function to ZanderFish3 which remains under construction as the design solidifies through the vetting process.
+
+v0.5 - New cipher designs for Amagus, Uvajda, Specjal and ZanderFish3.  Dieharder testing 100 iterations for each cipher and published the dieharder results in each cipher's repo.  Changed castlesmoke.py to clean up after itself.  Zander3 got a new mixing function and formula to calculate rounds based on key length.  Uvajda now uses an addition operation instead of XOR with the previous state.  Amagus has a transposition layer added. Specjal's round function was corrected. This version is not backward compatible and this is hopefully the final design of the ciphers. Also, Uvajda got converted to using structs.
+
+v0.4.7 - Added some word swaps to ZanderFish3.  Should be the last change in the design.
+
+v0.4.6 - Fixed mixing algorithm in ZanderFish3 and tweak placement
+
+v0.4.5 fix 0.4.4, Wild is still in the code base as the key wrapper for Spock
+
+v0.4.4 - More code cleanup, Drop Wild and leave Spock as the only 128 bit cipher, Add ZanderFish2 CTR mode
+
+v0.4.3 - Fix WildThing, Drop Ganja as a cipher, add ZanderFish3 256 bit, ZanderFish code cleanup
+
+v0.4.1 - Add Zanderfish2 in OFB mode - 256 bit
+
+v0.4 - Added nonce/iv for key wrapping.  Dropped algorithms BlueDye, Wrzeszcz, the original ZanderFish.  Corrected key wrapping for Specjal at 512 and 1024 bit key lengths.  Replaced wrzeszcz_random with amagus_random.  This version is not backward compatible and is considered stable.

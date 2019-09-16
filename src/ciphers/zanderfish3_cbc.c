@@ -10,6 +10,9 @@ int t1 = 0x0a78a94e98868e69;
 
 struct zander3_state {
     uint64_t K[80][4];
+    uint64_t K2[80][4];
+    uint64_t K3[80][4];
+    uint64_t K4[80][2];
     uint64_t D[4];
     uint64_t last[4];
     uint64_t next[4];
@@ -31,7 +34,7 @@ uint64_t zander3_rotr(uint64_t a, int b) {
 
 void *zander3_F(struct z3ksa_state *state) {
     int r;
-    for (r = 0; r < 12; r++) {
+    for (r = 0; r < 16; r++) {
         state->r[0] += state->r[6];
         state->r[1] ^= state->r[15];
         state->r[2] = zander3_rotl((state->r[2] ^ state->r[12]), 9);
@@ -66,6 +69,7 @@ void *zander3_F(struct z3ksa_state *state) {
         state->r[9] = zander3_rotl((state->r[9] ^ state->r[0]), 3);
         state->r[0] += state->r[5];
     }
+    state->o = 0;
     for (r = 0; r < 16; r++) {
         state->o ^= state->r[r];
     }
@@ -78,6 +82,9 @@ void z3gen_subkeys(struct zander3_state * state, unsigned char * key, int keylen
     int s;
     state->rounds = ((keylen / 4) + ((keylen / 8) + (48 - (keylen / 8))));
     memset(state->K, 0, state->rounds*(4*sizeof(uint64_t)));
+    memset(state->K2, 0, state->rounds*(4*sizeof(uint64_t)));
+    memset(state->K3, 0, state->rounds*(4*sizeof(uint64_t)));
+    memset(state->K4, 0, state->rounds*(2*sizeof(uint64_t)));
     memset(&kstate.r, 0, 16*sizeof(uint64_t));
     memset(&kstate.o, 0, sizeof(uint64_t));
     memset(state->last, 0, 4*sizeof(uint64_t));
@@ -100,6 +107,27 @@ void z3gen_subkeys(struct zander3_state * state, unsigned char * key, int keylen
 	    state->K[i][s] = kstate.o;
         }
     }
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 4; s++) {
+            zander3_F(&kstate);
+            state->K2[i][s] = 0;
+	    state->K2[i][s] = kstate.o;
+        }
+    }
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 4; s++) {
+            zander3_F(&kstate);
+            state->K3[i][s] = 0;
+	    state->K3[i][s] = kstate.o;
+        }
+    }
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 2; s++) {
+            zander3_F(&kstate);
+            state->K4[i][s] = 0;
+	    state->K4[i][s] = kstate.o;
+        }
+    }
     for (s = 0; s < 4; s++) {
         zander3_F(&kstate);
         state->D[s] = 0;
@@ -117,53 +145,52 @@ uint64_t z3block_encrypt(struct zander3_state * state, uint64_t *xl, uint64_t *x
     Xq = *xq;
 
     for (i = 0; i < state->rounds; i++) {
-        Xl += Xq + t0;
-        Xl = zander3_rotl(Xl, 9);
-        Xl ^= state->K[i][0];
-        Xq += Xp + t1;
-        Xq = zander3_rotl(Xq, 13);
-        Xq ^= state->K[i][1];
-        Xp += Xr;
-        Xp = zander3_rotl(Xp, 11);
-        Xp ^= state->K[i][2];
-        Xr += Xl;
-        Xr = zander3_rotl(Xr, 19);
-        Xr ^= state->K[i][3];
+/* Confusion */
+        Xq += state->K[i][0];
+        Xr += Xq + state->K[i][1];
+        Xl = zander3_rotl(Xl, 18) ^ Xp;
 
-        //Xr ^= (zander3_rotl(Xp, 3) + Xl);
-        //Xl ^= (zander3_rotl(Xq, 2) + Xr);
-        //Xp ^= (zander3_rotl(Xr, 6) + Xq);
-        //Xq ^= (zander3_rotl(Xl, 7) + Xp);
-        
-        temp = Xl;
-        Xl = Xr;
-        Xr = temp;
-        temp = Xp;
-        Xp = Xq;
-        Xq = temp;
+        Xp += state->K[i][2];
+        Xl += Xp + state->K[i][3];
+        Xq = zander3_rotl(Xq, 26) ^ Xr;
 
-        Xl += Xr;
-        Xl ^= (zander3_rotl(Xq, 15) ^ Xp);
-        Xq += Xl;
-        Xq ^= (zander3_rotl(Xp, 22) ^ Xr);
+        Xr += Xq + t0;
+        Xl += Xp + state->K2[i][0];
+        Xp = zander3_rotl(Xp, 14) ^ Xl;
+
+        Xq += state->K2[i][1];
         Xp += Xq;
-        Xp ^= (zander3_rotl(Xr, 7) ^ Xl);
-        Xr += Xp;
-        Xr ^= (zander3_rotl(Xl, 12) ^ Xq);
-        Xr += Xq;
-       
-        Xr += Xp;
+        Xr = zander3_rotl(Xr, 16) ^ Xq;
+        
+        Xl += state->K2[i][2];
+        Xr += Xl;
+        Xq = zander3_rotl(Xq, 34) ^ Xp;
+
+        Xr += state->K2[i][3];
+        Xp += Xq;
+        Xl = zander3_rotl(Xl, 28) ^ Xq;
+
+/* Diffusion */
+
+        Xl = zander3_rotr(Xl, 46);
         Xl += Xq;
-        Xp += Xr;
-        Xq += Xl;
+        Xl ^= state->K4[i][0];
+
+        Xr = zander3_rotr(Xr, 34);
+        Xr += Xp + t1;
+        Xr ^= state->K4[i][1];
+
+        Xp = zander3_rotl(Xp, 4);
+        Xp ^= Xr;
         
-        temp = Xq;
-        Xq = Xr;
-        Xr = temp;
-        temp = Xp;
-        Xp = Xl;
-        Xl = temp;
-        
+        Xq = zander3_rotl(Xq, 6);
+        Xq ^= Xl;
+
+        Xl += state->K3[i][2];
+        Xr += state->K3[i][3];
+        Xp += state->K3[i][1];
+        Xq += state->K3[i][0];
+
     }
     *xl = Xl + state->D[3];
     *xr = Xr + state->D[2];
@@ -186,53 +213,61 @@ uint64_t z3block_decrypt(struct zander3_state * state, uint64_t *xl, uint64_t *x
     Xq -= state->D[0];
 
     for (i = (state->rounds - 1); i != -1; i--) {
-        temp = Xq;
-        Xq = Xr;
-        Xr = temp;
-        temp = Xp;
-        Xp = Xl;
-        Xl = temp;
+/* Diffusion */
 
-        Xq -= Xl;
-        Xp -= Xr;
+        Xq -= state->K3[i][0];
+        Xp -= state->K3[i][1];
+        Xr -= state->K3[i][3];
+        Xl -= state->K3[i][2];
+
+        Xq ^= Xl;
+        Xq = zander3_rotr(Xq, 6);
+
+        Xp ^= Xr;
+        Xp = zander3_rotr(Xp, 4);
+
+        Xr ^= state->K4[i][1];
+        Xr -= Xp + t1;
+        Xr = zander3_rotl(Xr, 34);
+
+        Xl ^= state->K4[i][0];
         Xl -= Xq;
-        Xr -= Xp;
+        Xl = zander3_rotl(Xl, 46);
+
+/* Confusion */
         
-        Xr -= Xq;
-        Xr ^= (zander3_rotl(Xl, 12) ^ Xq);
-        Xr -= Xp;
-        Xp ^= (zander3_rotl(Xr, 7) ^ Xl);
+        temp = Xl ^ Xq;
+        Xl = zander3_rotr(temp, 28);
         Xp -= Xq;
-        Xq ^= (zander3_rotl(Xp, 22) ^ Xr);
-        Xq -= Xl;
-        Xl ^= (zander3_rotl(Xq, 15) ^ Xp);
-        Xl -= Xr;
-      
-        temp = Xl;
-        Xl = Xr;
-        Xr = temp;
-        temp = Xp;
-        Xp = Xq;
-        Xq = temp;
-        
-        //Xq ^= (zander3_rotl(Xl, 7) + Xp);
-        //Xp ^= (zander3_rotl(Xr, 6) + Xq);
-        //Xl ^= (zander3_rotl(Xq, 2) + Xr);
-        //Xr ^= (zander3_rotl(Xp, 3) + Xl);
+        Xr -= state->K2[i][3];
 
-        Xr ^= state->K[i][3];
-        Xr = zander3_rotr(Xr, 19);
+        temp = Xq ^ Xp;
+        Xq = zander3_rotr(temp, 34);
         Xr -= Xl;
-        Xp ^= state->K[i][2];
-        Xp = zander3_rotr(Xp, 11);
-        Xp -= Xr;
-        Xq ^= state->K[i][1];
-        Xq = zander3_rotr(Xq, 13);
-        Xq -= Xp + t1;
-        Xl ^= state->K[i][0];
-        Xl = zander3_rotr(Xl, 9);
-        Xl -= Xq + t0;
+        Xl -= state->K2[i][2];
 
+        temp = Xr ^ Xq;
+        Xr = zander3_rotr(temp, 16);
+        Xp -= Xq;
+        Xq -= state->K2[i][1];
+
+        temp = Xp ^ Xl;
+        Xp = zander3_rotr(temp, 14);
+        Xl -= Xp + state->K2[i][0];
+        Xr -= Xq + t0;
+
+     
+        temp = Xq ^ Xr;
+        Xq = zander3_rotr(temp, 26);
+        Xl -= Xp + state->K[i][3];
+        Xp -= state->K[i][2];
+
+        temp = Xl ^ Xp;
+        Xl = zander3_rotr(temp, 18);
+        Xr -= Xq + state->K[i][1];
+        Xq -= state->K[i][0];
+
+        
     }
     *xl = Xl;
     *xr = Xr;
