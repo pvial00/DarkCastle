@@ -24,31 +24,6 @@ uint64_t specjal_rotr(uint64_t a, int b) {
     return ((a >> b) | (a << (64 - b)));
 }
 
-void *specjal_F(struct ksa_state *state) {
-    int r;
-    for (r = 0; r < 10; r++) {
-        state->r[0] += state->r[6];
-        state->r[1] ^= state->r[15];
-        state->r[2] = specjal_rotl((state->r[2] ^ state->r[12]), 9);
-        state->r[3] += state->r[9];
-        state->r[4] ^= state->r[11];
-        state->r[5] = specjal_rotr((state->r[5] ^ state->r[10]), 6);
-        state->r[6] += state->r[13];
-        state->r[7] ^= state->r[8];
-        state->r[8] = specjal_rotl((state->r[8] ^ state->r[3]), 11);
-        state->r[9] += state->r[1];
-        state->r[10] ^= state->r[4];
-        state->r[11] = specjal_rotr((state->r[8] ^ state->r[7]), 7);
-        state->r[12] += state->r[0];
-        state->r[13] ^= state->r[2];
-        state->r[14] = specjal_rotl((state->r[14] ^ state->r[0]), 3);
-        state->r[15] += state->r[5];
-    }
-    for (r = 0; r < 16; r++) {
-        state->o ^= state->r[r];
-    }
-}
-
 void SroundF(struct specjal_state *state, uint64_t *xla, uint64_t *xlb, uint64_t *xra, uint64_t *xrb, int rounds) {
     uint64_t a, b, c, d, temp;
     a = *xla;
@@ -223,32 +198,6 @@ void specjal_ksa(struct specjal_state *state, unsigned char * key, int keylen, i
         state->d[r][2] = (uint64_t)k[2] ^ (uint64_t)k[6] ^ (uint64_t)k[10] ^ (uint64_t)k[14];
         state->d[r][3] = (uint64_t)k[3] ^ (uint64_t)k[7] ^ (uint64_t)k[11] ^ (uint64_t)k[15];
     }
-/*
-    memset(kstate.r, 0, (16*(sizeof(uint64_t))));
-    for (int i = 0; i < 16; i++) {
-        kstate.r[i] = 0;
-    }
-    for (int i = 0; i < 16; i++) {
-        kstate.r[i] ^= state->Ka[i];
-        kstate.r[i] ^= state->Kb[i];
-    }
-    kstate.o = 0x0000000000000000;
-    for (int i = 0; i < rounds; i++) {
-        specjal_F(&kstate);
-        state->Kc[i] = 0;
-        state->Kc[i] = kstate.o;
-        specjal_F(&kstate);
-        state->Kd[i] = 0;
-        state->Kd[i] = kstate.o;
-    } */
-/*
-    for (int i = 0; i < rounds; i++) {
-        state->Ka[i] ^= state->Kc[i];
-        state->Kd[i] ^= state->Kb[i];
-        state->Kb[i] ^= state->Kc[i];
-        state->Kc[i] ^= state->Kd[i];
-    }
-*/ 
 }
 
 void specjal_cbc_encrypt(unsigned char * msg, int msglen, unsigned char * key, int keylen, unsigned char * iv, int ivlen, int extrabytes) {
