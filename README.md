@@ -19,9 +19,9 @@ https://github.com/pvial00/DarkPass
 
 # Algorithms and authenticators
 
-Recommended ciphers are Amagus/ZanderFish2/Dark/Spock as they have been vetted more than the others
+All ciphers are recommended ciphers.  The top two recommended stream ciphers are Uvajda and Amagus and the top two block ciphers are ZanderFish3 and ZanderFish2.
 
-Fastest cipher is WildThing
+Fastest cipher is Uvajda
 
 Uvajda 256 bit authenticated with Ganja 256 bit - 128 bit nonce length
 
@@ -30,10 +30,6 @@ https://github.com/pvial00/Uvajda
 Amagus 256/512/1024 bit authenticated with Ganja 256 bit - 128 bit nonce length
 
 https://github.com/pvial00/Amagus
-
-WildThing 256 bit authenticated with Ganja 256 bit - 128 bit nonce length
-
-https://github.com/pvial00/WildThing
 
 Dark 256 bit authenticated with Ganja 256 bit - 128 bit nonce length
 
@@ -47,15 +43,7 @@ Zanderfish3 256 bit authenticated with Ganja 256 bit - 256 bit IV length
 
 https://github.com/pvial00/Zanderfish3
 
-ZanderfishU 1024 bit authenticated with Ganja 256 bit - 128 bit IV length
-
-https://github.com/pvial00/ZanderfishU
-
-Wild 128 bit authenticated with Ganja 256 bit - 128 bit nonce length
-
-https://github.com/pvial00/WildLFSR
-
-Spock-CBC 128/256 bit authenticated with Ganja 256 bit - 128 bit nonce length
+Spock-CBC 256 bit authenticated with Ganja 256 bit - 128 bit nonce length
 
 https://github.com/pvial00/Spock
 
