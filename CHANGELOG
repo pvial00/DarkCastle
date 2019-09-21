@@ -1,3 +1,5 @@
+v0.6.1 - Fixes for ZanderFish2-CBC on Linux, hopefully.  Adjusted Manja to be one function.
+
 v0.6 - Rewrite of DarkCastle to allow encryption of arbitrary file sizes (limited by uint64_t).  Drop Specjal (it will come back redesigned).  Forked DarkCastle at v0.5.5 as DarkCastleOneShot.
 
 v0.5.5 - Critical fix to Specjal's key scheduler.

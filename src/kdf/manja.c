@@ -39,7 +39,21 @@ uint64_t conv8to64(unsigned char buf[]) {
     return output;
 }
 
-void * manja_core(unsigned char * data, int datalen, unsigned char * D, int dlen,  unsigned char * salt, int saltlen, int iterations) {
+void * manja_kdf(unsigned char * data, int datalen, unsigned char * D, int dlen,  unsigned char * salt, int saltlen, int iterations) {
+    int minkeylen = 8;
+    int blocklen = 256;
+    if (dlen < minkeylen) {
+        exit(1);
+    }
+    else if (dlen > blocklen) {
+        exit(1);
+    }
+    unsigned char btmp[blocklen];
+    memset(btmp, 0, blocklen);
+    int i;
+    for (i = 0; i < datalen; i++) {
+        btmp[i] = btmp[i] ^ data[i];
+    }
     int rounds = 8 * 8;
     uint64_t H[16] = {0};
     uint64_t temp32[16] = {0};
@@ -64,7 +78,7 @@ void * manja_core(unsigned char * data, int datalen, unsigned char * D, int dlen
     W[13] = 0x470d38bc85b88382;
     W[14] = 0xb97a6124b44d233a;
     W[15] = 0x158389284c35ce2c;
-    int b, i, f, s, r, it;
+    int b, f, s, r, it;
     int c = 0;
     int blocks = 1; 
     int blocks_extra = 0;
@@ -81,10 +95,9 @@ void * manja_core(unsigned char * data, int datalen, unsigned char * D, int dlen
     for (b = 0; b < 2; b++) {
         uint64_t block[16] = {0};
         for (i = 0; i < 16; i++) {
-            //uint64_t block[16] = {0};
             unsigned char temp[8] = {0};
             for (f = 0; f < 8; f++) {
-                temp[f] = data[c];
+                temp[f] = btmp[c];
                 c += 1;
             }
             block[i] = conv8to64(temp);
@@ -143,25 +156,5 @@ void * manja_core(unsigned char * data, int datalen, unsigned char * D, int dlen
         D[c+6] = (H[i] & 0x000000000000FF00) >> 8;
         D[c+7] = (H[i] & 0x00000000000000FF);
 	c += 8;
-    }
-}
-
-void * manja_kdf(unsigned char * data, int datalen, unsigned char * D, int dlen, unsigned char * salt, int saltlen, int iterations) {
-    int minkeylen = 8;
-    int blocklen = 256;
-    if (dlen < minkeylen) {
-        exit(1);
-    }
-    else if (dlen > blocklen) {
-        exit(1);
-    }
-    if (datalen <= blocklen) {
-        unsigned char block[blocklen];
-        memset(block, 0, blocklen);
-        int i;
-        for (i = 0; i < datalen; i++) {
-            block[i] = block[i] ^ data[i];
-        }
-        manja_core(block, blocklen, D, dlen, salt, saltlen, iterations);
     }
 }

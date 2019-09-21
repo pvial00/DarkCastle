@@ -47,19 +47,19 @@ for algorithm in algorithms:
         out = subprocess.check_output(cmdenc)
     except subprocess.CalledProcessError as ier:
         print algorithm + " failed to encrypt"
-    print algorithm + " encrypting" + out
-    cmdhash = ['ganjasum', inputfile]
-    h1 = subprocess.check_output(cmdhash)
-    
-    cmddec = ['castle', algorithm, '-d', '.b1','.b2' , key]
-    out = subprocess.check_output(cmddec)
-    print algorithm + " decrypting" + out
-    cmdhash = ['ganjasum', '.b2']
-    h2 = subprocess.check_output(cmdhash)
-    if h1 != h2:
-        print inputfile + " failed to decrypt!"
-    else:
-       c += 1
+    else: 
+        print algorithm + " encrypting" + out
+        cmdhash = ['ganjasum', inputfile]
+        h1 = subprocess.check_output(cmdhash)
+        cmddec = ['castle', algorithm, '-d', '.b1','.b2' , key]
+        out = subprocess.check_output(cmddec)
+        print algorithm + " decrypting" + out
+        cmdhash = ['ganjasum', '.b2']
+        h2 = subprocess.check_output(cmdhash)
+        if h1 != h2:
+            print inputfile + " failed to decrypt!"
+        else:
+           c += 1
 if c == algorithm_count:
     print "Success all algorithms check out"
 else:

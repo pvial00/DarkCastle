@@ -242,7 +242,7 @@ void * zander2_cbc_encrypt(char * inputfile, char *outputfile, int key_length, i
     unsigned char iv[nonce_length];
     amagus_random(&iv, nonce_length);
     unsigned char mac[mac_length];
-    unsigned char mac_key[key_length];
+    unsigned char *mac_key[key_length];
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
     unsigned char *K[key_length];
@@ -326,7 +326,7 @@ void * zander2_cbc_encrypt(char * inputfile, char *outputfile, int key_length, i
     }
     close(infile);
     fclose(outfile);
-    manja_kdf(key, key_length, &mac_key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
     ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
