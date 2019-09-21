@@ -79,8 +79,9 @@ void * manja_core(unsigned char * data, int datalen, unsigned char * D, int dlen
     }
     // Load the 256 byte block
     for (b = 0; b < 2; b++) {
+        uint64_t block[16] = {0};
         for (i = 0; i < 16; i++) {
-            uint64_t block[16] = {0};
+            //uint64_t block[16] = {0};
             unsigned char temp[8] = {0};
             for (f = 0; f < 8; f++) {
                 temp[f] = data[c];
@@ -141,13 +142,13 @@ void * manja_core(unsigned char * data, int datalen, unsigned char * D, int dlen
         D[c+5] = (H[i] & 0x0000000000FF0000) >> 16;
         D[c+6] = (H[i] & 0x000000000000FF00) >> 8;
         D[c+7] = (H[i] & 0x00000000000000FF);
-	c = (c + 8);
+	c += 8;
     }
 }
 
 void * manja_kdf(unsigned char * data, int datalen, unsigned char * D, int dlen, unsigned char * salt, int saltlen, int iterations) {
     int minkeylen = 8;
-    long blocklen = 256;
+    int blocklen = 256;
     if (dlen < minkeylen) {
         exit(1);
     }

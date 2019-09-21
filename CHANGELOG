@@ -1,3 +1,5 @@
+v0.6 - Rewrite of DarkCastle to allow encryption of arbitrary file sizes (limited by uint64_t).  Drop Specjal (it will come back redesigned).  Forked DarkCastle at v0.5.5 as DarkCastleOneShot.
+
 v0.5.5 - Critical fix to Specjal's key scheduler.
 
 v0.5.4 - ZanderFish3 final design.  Specjal redesign.  Add 512 and 1024 bit ZanderFish3.  Fixed Spock's key scheduler for 256 bit keys.  Drop 128 bit support.  Drop ZanderFishU and WildThing.  Docs uploaded.  ZanderFish3 and Specjal docs coming very soon.

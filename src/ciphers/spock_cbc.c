@@ -179,7 +179,30 @@ void spock_ksa(struct spock_state *state, unsigned char * key, int keylen, int r
     }
 }
 
-void spock_cbc_encrypt(unsigned char * msg, int msglen, unsigned char * key, int keylen, unsigned char * iv, int ivlen, int extrabytes) {
+void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, unsigned char *password,  int keywrap_ivlen, int bufsize) {
+    int blocksize = 16;
+    FILE *infile, *outfile;
+    unsigned char buffer[bufsize];
+    memset(buffer, 0, bufsize);
+    unsigned char iv[nonce_length];
+    amagus_random(&iv, nonce_length);
+    unsigned char mac[mac_length];
+    unsigned char mac_key[key_length];
+    unsigned char key[key_length];
+    unsigned char *keyprime[key_length];
+    unsigned char *K[key_length];
+    manja_kdf(password, strlen(password), key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    unsigned char *kwnonce[keywrap_ivlen];
+    key_wrap_encrypt(keyprime, key_length, key, K, kwnonce);
+    infile = fopen(inputfile, "rb");
+    outfile = fopen(outputfile, "wb");
+    fseek(infile, 0, SEEK_END);
+    uint64_t datalen = ftell(infile);
+    fseek(infile, 0, SEEK_SET);
+    fwrite(kwnonce, 1, keywrap_ivlen, outfile);
+    fwrite(iv, 1, nonce_length, outfile);
+    fwrite(K, 1, key_length, outfile);
+
     uint8_t k[16];
     uint32_t block[4];
     uint32_t last[4];
@@ -187,22 +210,22 @@ void spock_cbc_encrypt(unsigned char * msg, int msglen, unsigned char * key, int
     struct spock_state state;
     int iv_length = 16;
     int rounds = 40;
-    if (keylen == 32) {
+    if (key_length == 32) {
         rounds = 48;
     }
     int c = 0;
-    spock_ksa(&state, key, keylen, rounds);
+    spock_ksa(&state, keyprime, key_length, rounds);
     int v = 16;
-    int x, i;
+    uint64_t i;
+    int x,  b;
     int t = 0;
     int ii;
     long ctr = 0;
     long ctrtwo = 0;
-    int blocks = msglen / 16;
-    int msglen_extra = extrabytes;
-    int padsize = msglen + msglen_extra;
-    unsigned char data[v];
-    if (extrabytes != 0) {
+    uint64_t blocks = datalen / bufsize;
+    int extra = datalen % bufsize;
+    int extrabytes = blocksize - (datalen % blocksize);
+    if (extra != 0) {
         blocks += 1;
     }
     for (int i = 0; i < 4; i++) {
@@ -210,52 +233,87 @@ void spock_cbc_encrypt(unsigned char * msg, int msglen, unsigned char * key, int
         c += 4;
     }
     for (i = 0; i < (blocks); i++) {
-        for (ii = 0; ii < v; ii++) {
-            data[ii] = msg[ctr];
-            ctr = ctr + 1;
+        if ((i == (blocks - 1)) && (extra != 0)) {
+            bufsize = extra;
         }
-        if (i == (blocks - 1)) {
-            int g = 15;
-            for (int b = 0; b < msglen_extra; b++) {
-                data[g] = msglen_extra;
-	        g = (g - 1);
+        fread(&buffer, 1, bufsize, infile);
+        c = 0;
+        if (((i == (blocks - 1)) && (extra != 0))) {
+            for (int p = 0; p < extrabytes; p++) {
+                buffer[(bufsize+extrabytes-1)-p] = (unsigned char *)extrabytes;
             }
+            bufsize = bufsize + extrabytes;
         }
-        block[0] = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
-        block[1] = (data[4] << 24) + (data[5] << 16) + (data[6] << 8) + data[7];
-        block[2] = (data[8] << 24) + (data[9] << 16) + (data[10] << 8) + data[11];
-        block[3] = (data[12] << 24) + (data[13] << 16) + (data[14] << 8) + data[15];
-        for (int r = 0; r < 4; r++) {
-            block[r] = block[r] ^ last[r];
+        int bblocks = bufsize / blocksize;
+        int bextra = bufsize % blocksize;
+        if (bextra != 0) {
+            bblocks += 1;
         }
-        roundF(&state, &block[0], &block[1], &block[2], &block[3], rounds);
-        for (int r = 0; r < 4; r++) {
-            last[r] = block[r];
+        if (bufsize < blocksize) {
+            bblocks = 1;
         }
-        k[3] = (block[0] & 0x000000FF);
-        k[2] = (block[0] & 0x0000FF00) >> 8;
-        k[1] = (block[0] & 0x00FF0000) >> 16;
-        k[0] = (block[0] & 0xFF000000) >> 24;
-        k[7] = (block[1] & 0x000000FF);
-        k[6] = (block[1] & 0x0000FF00) >> 8;
-        k[5] = (block[1] & 0x00FF0000) >> 16;
-        k[4] = (block[1] & 0xFF000000) >> 24;
-        k[11] = (block[2] & 0x000000FF);
-        k[10] = (block[2] & 0x0000FF00) >> 8;
-        k[9] = (block[2] & 0x00FF0000) >> 16;
-        k[8] = (block[2] & 0xFF000000) >> 24;
-        k[15] = (block[3] & 0x000000FF);
-        k[14] = (block[3] & 0x0000FF00) >> 8;
-        k[13] = (block[3] & 0x00FF0000) >> 16;
-        k[12] = (block[3] & 0xFF000000) >> 24;
-        for (ii = 0; ii < v; ii++) {
-            msg[ctrtwo] = k[ii];
-            ctrtwo = ctrtwo + 1;
+        for (b = 0; b < bblocks; b++) {
+            block[0] = (buffer[c] << 24) + (buffer[c+1] << 16) + (buffer[c+2] << 8) + buffer[c+3];
+            block[1] = (buffer[c+4] << 24) + (buffer[c+5] << 16) + (buffer[c+6] << 8) + buffer[c+7];
+            block[2] = (buffer[c+8] << 24) + (buffer[c+9] << 16) + (buffer[c+10] << 8) + buffer[c+11];
+            block[3] = (buffer[c+12] << 24) + (buffer[c+13] << 16) + (buffer[c+14] << 8) + buffer[c+15];
+            for (int r = 0; r < 4; r++) {
+                block[r] = block[r] ^ last[r];
+            }
+            roundF(&state, &block[0], &block[1], &block[2], &block[3], rounds);
+            for (int r = 0; r < 4; r++) {
+                last[r] = block[r];
+            }
+            buffer[c+3] = (block[0] & 0x000000FF);
+            buffer[c+2] = (block[0] & 0x0000FF00) >> 8;
+            buffer[c+1] = (block[0] & 0x00FF0000) >> 16;
+            buffer[c] = (block[0] & 0xFF000000) >> 24;
+            buffer[c+7] = (block[1] & 0x000000FF);
+            buffer[c+6] = (block[1] & 0x0000FF00) >> 8;
+            buffer[c+5] = (block[1] & 0x00FF0000) >> 16;
+            buffer[c+4] = (block[1] & 0xFF000000) >> 24;
+            buffer[c+11] = (block[2] & 0x000000FF);
+            buffer[c+10] = (block[2] & 0x0000FF00) >> 8;
+            buffer[c+9] = (block[2] & 0x00FF0000) >> 16;
+            buffer[c+8] = (block[2] & 0xFF000000) >> 24;
+            buffer[c+15] = (block[3] & 0x000000FF);
+            buffer[c+14] = (block[3] & 0x0000FF00) >> 8;
+            buffer[c+13] = (block[3] & 0x00FF0000) >> 16;
+            buffer[c+12] = (block[3] & 0xFF000000) >> 24;
+            c += 16;
         }
+        fwrite(buffer, 1, bufsize, outfile);
     }
+    fclose(infile);
+    fclose(outfile);
+    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-int spock_cbc_decrypt(unsigned char * msg, int msglen, unsigned char * key, int keylen, unsigned char * iv, int ivlen) {
+void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, unsigned char *password,  int keywrap_ivlen, int bufsize) {
+    int blocksize = 16;
+    FILE *infile, *outfile;
+    unsigned char buffer[bufsize];
+    memset(buffer, 0, bufsize);
+    unsigned char iv[nonce_length];
+    unsigned char mac[mac_length];
+    unsigned char mac_key[key_length];
+    unsigned char key[key_length];
+    unsigned char *keyprime[key_length];
+    manja_kdf(password, strlen(password), key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    unsigned char *kwnonce[keywrap_ivlen];
+    infile = fopen(inputfile, "rb");
+    fseek(infile, 0, SEEK_END);
+    uint64_t datalen = ftell(infile);
+    datalen = datalen - key_length - mac_length - nonce_length - keywrap_ivlen;
+    fseek(infile, 0, SEEK_SET);
+    fread(&mac, 1, mac_length, infile);
+    fread(kwnonce, 1, keywrap_ivlen, infile);
+    fread(iv, 1, nonce_length, infile);
+    fread(keyprime, 1, key_length, infile);
+    key_wrap_decrypt(keyprime, key_length, key, kwnonce);
+
     uint8_t k[16];
     uint32_t block[4];
     uint32_t last[4];
@@ -263,75 +321,98 @@ int spock_cbc_decrypt(unsigned char * msg, int msglen, unsigned char * key, int 
     struct spock_state state;
     int iv_length = 16;
     int rounds = 40;
-    if (keylen == 32) {
+    if (key_length == 32) {
         rounds = 48;
     }
     int c = 0;
-    spock_ksa(&state, key, keylen, rounds);
+    spock_ksa(&state, keyprime, key_length, rounds);
     int v = 16;
-    int x, i;
+    uint64_t i;
+    int x, b;
     int t = 0;
     int ctr = 0;
     int ctrtwo = 0;
     int ii;
-    unsigned char data[v];
-    int blocks = msglen / 16;
-    int extra = 0;
-    for (int i = 0; i < 4; i++) {
-        last[i] = (iv[c] << 24) + (iv[c+1] << 16) + (iv[c+2] << 8) + iv[c+3];
-        c += 4;
+    uint64_t blocks = datalen / bufsize;
+    int extra = datalen % bufsize;
+    if (extra != 0) {
+        blocks += 1;
     }
-    for (i = 0; i < (blocks); i++) {
-        for (ii = 0; ii < v; ii++) {
-            data[ii] = msg[ctr];
-            ctr = ctr + 1;
+    if (datalen < bufsize) {
+        blocks = 1;
+    }
+    fclose(infile);
+    if (ganja_hmac_verify(inputfile, mac_key, key_length) == 0) {
+        outfile = fopen(outputfile, "wb");
+        infile = fopen(inputfile, "rb");
+        fseek(infile, (mac_length + keywrap_ivlen + nonce_length + key_length), SEEK_SET);
+        for (int i = 0; i < 4; i++) {
+            last[i] = (iv[c] << 24) + (iv[c+1] << 16) + (iv[c+2] << 8) + iv[c+3];
+            c += 4;
         }
-        block[0] = (data[0] << 24) + (data[1] << 16) + (data[2] << 8) + data[3];
-        block[1] = (data[4] << 24) + (data[5] << 16) + (data[6] << 8) + data[7];
-        block[2] = (data[8] << 24) + (data[9] << 16) + (data[10] << 8) + data[11];
-        block[3] = (data[12] << 24) + (data[13] << 16) + (data[14] << 8) + data[15];
-        for (int r = 0; r < 4; r++) {
-            next[r] = block[r];
-        }
-        roundB(&state, &block[0], &block[1], &block[2], &block[3], rounds);
-        for (int r = 0; r < 4; r++) {
-            block[r] = block[r] ^ last[r];
-            last[r] = next[r];
-        }
-        k[3] = (block[0] & 0x000000FF);
-        k[2] = (block[0] & 0x0000FF00) >> 8;
-        k[1] = (block[0] & 0x00FF0000) >> 16;
-        k[0] = (block[0] & 0xFF000000) >> 24;
-        k[7] = (block[1] & 0x000000FF);
-        k[6] = (block[1] & 0x0000FF00) >> 8;
-        k[5] = (block[1] & 0x00FF0000) >> 16;
-        k[4] = (block[1] & 0xFF000000) >> 24;
-        k[11] = (block[2] & 0x000000FF);
-        k[10] = (block[2] & 0x0000FF00) >> 8;
-        k[9] = (block[2] & 0x00FF0000) >> 16;
-        k[8] = (block[2] & 0xFF000000) >> 24;
-        k[15] = (block[3] & 0x000000FF);
-        k[14] = (block[3] & 0x0000FF00) >> 8;
-        k[13] = (block[3] & 0x00FF0000) >> 16;
-        k[12] = (block[3] & 0xFF000000) >> 24;
-        for (ii = 0; ii < v; ii++) {
-            msg[ctrtwo] = k[ii];
-            ctrtwo = ctrtwo + 1;
-        }
-        if (i == (blocks-1)) {
-           int count = 0;
-           int padcheck = k[15];
-           int g = 15;
-           for (int m = 0; m < padcheck; m++) {
-               if ((int)k[g] == padcheck) {
-                   count += 1;
+        for (i = 0; i < (blocks); i++) {
+            if (i == (blocks - 1) && (extra != 0)) {
+                bufsize = extra;
+            }
+            fread(&buffer, 1, bufsize, infile);
+            c = 0;
+            int bblocks = bufsize / blocksize;
+            int bextra = bufsize % blocksize;
+            if (bextra != 0) {
+                bblocks += 1;
+            }
+            for (b = 0; b < bblocks; b++) {
+                block[0] = (buffer[c] << 24) + (buffer[c+1] << 16) + (buffer[c+2] << 8) + buffer[c+3];
+                block[1] = (buffer[c+4] << 24) + (buffer[c+5] << 16) + (buffer[c+6] << 8) + buffer[c+7];
+                block[2] = (buffer[c+8] << 24) + (buffer[c+9] << 16) + (buffer[c+10] << 8) + buffer[c+11];
+                block[3] = (buffer[c+12] << 24) + (buffer[c+13] << 16) + (buffer[c+14] << 8) + buffer[c+15];
+                for (int r = 0; r < 4; r++) {
+                    next[r] = block[r];
+                }
+                roundB(&state, &block[0], &block[1], &block[2], &block[3], rounds);
+                for (int r = 0; r < 4; r++) {
+                    block[r] = block[r] ^ last[r];
+                    last[r] = next[r];
+                }
+                buffer[c+3] = (block[0] & 0x000000FF);
+                buffer[c+2] = (block[0] & 0x0000FF00) >> 8;
+                buffer[c+1] = (block[0] & 0x00FF0000) >> 16;
+                buffer[c] = (block[0] & 0xFF000000) >> 24;
+                buffer[c+7] = (block[1] & 0x000000FF);
+                buffer[c+6] = (block[1] & 0x0000FF00) >> 8;
+                buffer[c+5] = (block[1] & 0x00FF0000) >> 16;
+                buffer[c+4] = (block[1] & 0xFF000000) >> 24;
+                buffer[c+11] = (block[2] & 0x000000FF);
+                buffer[c+10] = (block[2] & 0x0000FF00) >> 8;
+                buffer[c+9] = (block[2] & 0x00FF0000) >> 16;
+                buffer[c+8] = (block[2] & 0xFF000000) >> 24;
+                buffer[c+15] = (block[3] & 0x000000FF);
+                buffer[c+14] = (block[3] & 0x0000FF00) >> 8;
+                buffer[c+13] = (block[3] & 0x00FF0000) >> 16;
+                buffer[c+12] = (block[3] & 0xFF000000) >> 24;
+                c += 16;
+            }
+
+            if (i == (blocks-1)) {
+               int count = 0;
+               int padcheck = buffer[(bufsize - 1)];
+               int g = bufsize - 1;
+               for (int m = 0; m < padcheck; m++) {
+                   if ((int)buffer[g] == padcheck) {
+                       count += 1;
+                   }
+                   g = (g - 1);
                }
-               g = (g - 1);
-           }
-           if (count == padcheck) {
-               return count;
-           }
-           return padcheck;
+               if (count == padcheck) {
+                   bufsize = bufsize - count;
+               }
+            }
+            fwrite(buffer, 1, bufsize, outfile);
         }
+        fclose(infile);
+        fclose(outfile);
+    }
+    else {
+        printf("Error: Message has been tampered with.\n");
     }
 }
