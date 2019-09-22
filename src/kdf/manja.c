@@ -83,6 +83,7 @@ void * manja_kdf(unsigned char * data, int datalen, unsigned char * D, int dlen,
     int blocks = 1; 
     int blocks_extra = 0;
     int blocksize = 256;
+    int drounds = dlen / 8;
     s = 0;
     m = 0x0000000000000001;
     // XOR the salt with the static words
@@ -146,7 +147,7 @@ void * manja_kdf(unsigned char * data, int datalen, unsigned char * D, int dlen,
     }
 	    
     c = 0;
-    for (i = 0; i < (dlen / 8); i++) {
+    for (i = 0; i < drounds; i++) {
         D[c] = (H[i] & 0xFF00000000000000) >> 56;
         D[c+1] = (H[i] & 0x00FF000000000000) >> 48;
         D[c+2] = (H[i] & 0x0000FF0000000000) >> 40;

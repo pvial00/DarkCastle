@@ -7,6 +7,7 @@ struct spock_state {
     uint32_t Ka[48];
     uint32_t Kb[48];
     uint32_t d[48][4];
+    int rounds;
 };
 
 uint32_t spock_rotl(uint32_t a, int b) {
@@ -17,13 +18,14 @@ uint32_t spock_rotr(uint32_t a, int b) {
     return ((a >> b) | (a << (32 - b)));
 }
 
-void roundF(struct spock_state *state, uint32_t *xla, uint32_t *xlb, uint32_t *xra, uint32_t *xrb, int rounds) {
+void roundF(struct spock_state *state, uint32_t *xla, uint32_t *xlb, uint32_t *xra, uint32_t *xrb) {
     uint32_t a, b, c, d;
+    int r;
     a = *xla;
     b = *xlb;
     c = *xra;
     d = *xrb;
-    for (int r = 0; r < rounds; r++) {
+    for (r = 0; r < state->rounds; r++) {
         a = spock_rotr(a, 8);
 	a += d;
         a ^= state->Ka[r];
@@ -47,13 +49,14 @@ void roundF(struct spock_state *state, uint32_t *xla, uint32_t *xlb, uint32_t *x
     *xrb = d;
 }
 
-void roundB(struct spock_state *state, uint32_t *xla, uint32_t *xlb, uint32_t *xra, uint32_t *xrb, int rounds) {
+void roundB(struct spock_state *state, uint32_t *xla, uint32_t *xlb, uint32_t *xra, uint32_t *xrb) {
     uint32_t a, b, c, d;
+    int r;
     a = *xla;
     b = *xlb;
     c = *xra;
     d = *xrb;
-    for (int r = rounds; r --> 0;) {
+    for (r = state->rounds; r --> 0;) {
 	d -= state->d[r][3];
 	c -= state->d[r][2];
 	b -= state->d[r][1];
@@ -77,104 +80,67 @@ void roundB(struct spock_state *state, uint32_t *xla, uint32_t *xlb, uint32_t *x
     *xrb = d;
 }
 
-void spock_ksa(struct spock_state *state, unsigned char * key, int keylen, int rounds) {
+void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
     uint32_t temp = 0x00000001;
     struct spock_state tempstate;
     int m = 0;
-    int b;
-    int inc = keylen / 4;
-    int step = inc / 4;
-    uint32_t *k[inc];
-    for (int i = 0; i < inc; i++) {
+    int b, i, r, x;
+    uint32_t *k[8];
+    memset(k, 0, 8*sizeof(uint32_t));
+    memset(state->Ka, 0, state->rounds*sizeof(uint32_t));
+    memset(state->Kb, 0, state->rounds*sizeof(uint32_t));
+    memset(tempstate.Ka, 0, state->rounds*sizeof(uint32_t));
+    memset(tempstate.Kb, 0, state->rounds*sizeof(uint32_t));
+    memset(state->d, 0, 4*(state->rounds*sizeof(uint32_t)));
+    memset(tempstate.d, 0, 4*(state->rounds*sizeof(uint32_t)));
+    for (i = 0; i < 8; i++) {
         k[i] = 0;
-        k[i] = (key[m] << 24) + (key[m+1] << 16) + (key[m+2] << 8) + key[m+3];
-        m += step;
+        k[i] = (keyp[m] << 24) + (keyp[m+1] << 16) + (keyp[m+2] << 8) + keyp[m+3];
+        m += 4;
     }
     
-    int c = 0;
-    for (int r = 0; r < (rounds / inc); r++) {
-        for (int i = 0; i < inc; i++) {
-            tempstate.Ka[c] = k[i];
-            tempstate.Kb[c] = k[i];
-	    c += 1;
+    for (r = 0; r < state->rounds; r++) {
+        roundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
+        roundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
+        for (i = 0; i < 8; i++) {
+            tempstate.Ka[r] ^= (uint32_t)k[i];
         }
     }
-    c = 0;
-    for (int r = 0; r < rounds; r++) {
-        for (int i = 0; i < 4; i++) {
-            state->d[r][i] = 0;
-	    tempstate.d[r][i] = k[i];
+    for (r = 0; r < state->rounds; r++) {
+        roundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
+        roundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
+        for (i = 0; i < 8; i++) {
+            tempstate.Kb[r] ^= (uint32_t)k[i];
         }
     }
-    c = 0;
-    b = 0;
-    if (keylen == 16) {
-        for (int r = 0; r < (rounds / inc); r++) {
-            m = 0;
-            for (int i = 0; i < (inc / 4); i++) {
-	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-                m += 4;
+    for (r = 0; r < state->rounds; r++) {
+        for (i = 0; i < 4; i++) {
+            roundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
+            roundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
+            for (x = 0; x < 8; x++) {
+	        tempstate.d[r][i] ^= (uint32_t)k[x];
             }
-            for (int i = 0; i < inc; i++) {
-                state->Ka[c] = k[i];
-	        c += 1;
-            }
-            m = 0;
-            for (int i = 0; i < (inc / 4); i++) {
-	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-                m += 4;
-            }
-            for (int i = 0; i < inc; i++) {
-                state->Kb[b] = k[i];
-	        b += 1;
-            }
-        }
-        for (int r = 0; r < rounds; r++) {
-            m = 0;
-            for (int i = 0; i < (inc / 4); i++) {
-	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-                m += 4;
-            }
-            state->d[r][0] = k[0];
-            state->d[r][1] = k[1];
-            state->d[r][2] = k[2];
-            state->d[r][3] = k[3];
         }
     }
-    else if (keylen == 32) {
-        for (int r = 0; r < (rounds / inc); r++) {
-            m = 0;
-            for (int i = 0; i < (inc / 4); i++) {
-	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-	        roundF(&tempstate, &k[m+4], &k[m+5], &k[m+6], &k[m+7], rounds);
-                m += 4;
-            }
-            for (int i = 0; i < inc; i++) {
-                state->Ka[c] = k[i];
-	        c += 1;
-            }
-            m = 0;
-            for (int i = 0; i < (inc / 4); i++) {
-	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-	        roundF(&tempstate, &k[m+4], &k[m+5], &k[m+6], &k[m+7], rounds);
-                m += 4;
-            }
-            for (int i = 0; i < inc; i++) {
-                state->Kb[b] = k[i];
-	        b += 1;
-            }
+    for (r = 0; r < state->rounds; r++) {
+        roundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
+        roundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
+        for (i = 0; i < 8; i++) {
+            state->Ka[r] ^= (uint32_t)k[i];
         }
-        for (int r = 0; r < rounds; r++) {
-            m = 0;
-            for (int i = 0; i < (inc / 4); i++) {
-	        roundF(&tempstate, &k[m], &k[m+1], &k[m+2], &k[m+3], rounds);
-	        roundF(&tempstate, &k[m+4], &k[m+5], &k[m+6], &k[m+7], rounds);
-                m += 4;
+        roundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
+        roundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
+        for (i = 0; i < 8; i++) {
+            state->Kb[r] ^= (uint32_t)k[i];
+        }
+    }
+    for (r = 0; r < state->rounds; r++) {
+        for (i = 0; i < 4; i++) {
+            roundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
+            roundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
+            for (x = 0; x < 8; x++) {
+                state->d[r][i] ^= (uint32_t)k[x];
             }
-            state->d[r][0] = (uint64_t)k[0] + (uint64_t)k[4];
-            state->d[r][1] = (uint64_t)k[1] + (uint64_t)k[5];
-            state->d[r][2] = (uint64_t)k[2] + (uint64_t)k[6];
-            state->d[r][3] = (uint64_t)k[3] + (uint64_t)k[7];
         }
     }
 }
@@ -209,24 +175,21 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
     uint32_t next[4];
     struct spock_state state;
     int iv_length = 16;
-    int rounds = 40;
-    if (key_length == 32) {
-        rounds = 48;
-    }
+    state.rounds = 48;
     int c = 0;
-    spock_ksa(&state, keyprime, key_length, rounds);
+    spock_ksa(&state, keyprime, key_length);
     int v = 16;
     uint64_t i;
-    int x,  b;
+    int x,  b, ii, r;
     int t = 0;
-    int ii;
-    long ctr = 0;
-    long ctrtwo = 0;
     uint64_t blocks = datalen / bufsize;
     int extra = datalen % bufsize;
     int extrabytes = blocksize - (datalen % blocksize);
     if (extra != 0) {
         blocks += 1;
+    }
+    if (datalen < bufsize) {
+        blocks = 1;
     }
     for (int i = 0; i < 4; i++) {
         last[i] = (iv[c] << 24) + (iv[c+1] << 16) + (iv[c+2] << 8) + iv[c+3];
@@ -244,23 +207,20 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
             }
             bufsize = bufsize + extrabytes;
         }
-        int bblocks = bufsize / blocksize;
-        int bextra = bufsize % blocksize;
+        int bblocks = bufsize / 16;
+        int bextra = bufsize % 16;
         if (bextra != 0) {
             bblocks += 1;
-        }
-        if (bufsize < blocksize) {
-            bblocks = 1;
         }
         for (b = 0; b < bblocks; b++) {
             block[0] = (buffer[c] << 24) + (buffer[c+1] << 16) + (buffer[c+2] << 8) + buffer[c+3];
             block[1] = (buffer[c+4] << 24) + (buffer[c+5] << 16) + (buffer[c+6] << 8) + buffer[c+7];
             block[2] = (buffer[c+8] << 24) + (buffer[c+9] << 16) + (buffer[c+10] << 8) + buffer[c+11];
             block[3] = (buffer[c+12] << 24) + (buffer[c+13] << 16) + (buffer[c+14] << 8) + buffer[c+15];
-            for (int r = 0; r < 4; r++) {
+            for (r = 0; r < 4; r++) {
                 block[r] = block[r] ^ last[r];
             }
-            roundF(&state, &block[0], &block[1], &block[2], &block[3], rounds);
+            roundF(&state, &block[0], &block[1], &block[2], &block[3]);
             for (int r = 0; r < 4; r++) {
                 last[r] = block[r];
             }
@@ -320,19 +280,13 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
     uint32_t next[4];
     struct spock_state state;
     int iv_length = 16;
-    int rounds = 40;
-    if (key_length == 32) {
-        rounds = 48;
-    }
+    state.rounds = 48;
     int c = 0;
-    spock_ksa(&state, keyprime, key_length, rounds);
+    spock_ksa(&state, keyprime, key_length);
     int v = 16;
     uint64_t i;
-    int x, b;
+    int x, b, ii, r;
     int t = 0;
-    int ctr = 0;
-    int ctrtwo = 0;
-    int ii;
     uint64_t blocks = datalen / bufsize;
     int extra = datalen % bufsize;
     if (extra != 0) {
@@ -346,6 +300,7 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
         outfile = fopen(outputfile, "wb");
         infile = fopen(inputfile, "rb");
         fseek(infile, (mac_length + keywrap_ivlen + nonce_length + key_length), SEEK_SET);
+        c = 0;
         for (int i = 0; i < 4; i++) {
             last[i] = (iv[c] << 24) + (iv[c+1] << 16) + (iv[c+2] << 8) + iv[c+3];
             c += 4;
@@ -356,8 +311,8 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
             }
             fread(&buffer, 1, bufsize, infile);
             c = 0;
-            int bblocks = bufsize / blocksize;
-            int bextra = bufsize % blocksize;
+            int bblocks = bufsize / 16;
+            int bextra = bufsize % 16;
             if (bextra != 0) {
                 bblocks += 1;
             }
@@ -366,11 +321,11 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
                 block[1] = (buffer[c+4] << 24) + (buffer[c+5] << 16) + (buffer[c+6] << 8) + buffer[c+7];
                 block[2] = (buffer[c+8] << 24) + (buffer[c+9] << 16) + (buffer[c+10] << 8) + buffer[c+11];
                 block[3] = (buffer[c+12] << 24) + (buffer[c+13] << 16) + (buffer[c+14] << 8) + buffer[c+15];
-                for (int r = 0; r < 4; r++) {
+                for (r = 0; r < 4; r++) {
                     next[r] = block[r];
                 }
-                roundB(&state, &block[0], &block[1], &block[2], &block[3], rounds);
-                for (int r = 0; r < 4; r++) {
+                roundB(&state, &block[0], &block[1], &block[2], &block[3]);
+                for (r = 0; r < 4; r++) {
                     block[r] = block[r] ^ last[r];
                     last[r] = next[r];
                 }
@@ -403,7 +358,7 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
                    }
                    g = (g - 1);
                }
-               if (count == padcheck) {
+               if (padcheck == count) {
                    bufsize = bufsize - count;
                }
             }
