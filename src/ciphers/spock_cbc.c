@@ -169,7 +169,6 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
     fwrite(iv, 1, nonce_length, outfile);
     fwrite(K, 1, key_length, outfile);
 
-    uint8_t k[16];
     uint32_t block[4];
     uint32_t last[4];
     uint32_t next[4];
@@ -179,7 +178,7 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
     int c = 0;
     spock_ksa(&state, keyprime, key_length);
     int v = 16;
-    uint64_t i;
+    uint64_t i = 0;
     int x,  b, ii, r;
     int t = 0;
     uint64_t blocks = datalen / bufsize;
@@ -283,8 +282,7 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
     state.rounds = 48;
     int c = 0;
     spock_ksa(&state, keyprime, key_length);
-    int v = 16;
-    uint64_t i;
+    uint64_t i = 0;
     int x, b, ii, r;
     int t = 0;
     uint64_t blocks = datalen / bufsize;

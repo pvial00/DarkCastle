@@ -53,7 +53,13 @@ void dark_keysetup(struct dark_state *state, unsigned char *key, unsigned char *
     for (int i = 0; i < 8; i++) {
         state->j = (state->j + state->r[i]) & 0xFFFFFFFF;
     }
-    dark_F(state);
+    state->c = state->j;
+    for (int i = 0; i < 64; i++) {
+        dark_F(state);
+    }
+    for (int i = 0; i < 8; i++) {
+        state->j = (state->j + state->r[i]) & 0xFFFFFFFF;
+    }
 }
 
 void * dark_encrypt(char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, unsigned char *password,  int keywrap_ivlen, int bufsize) {
