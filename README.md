@@ -21,7 +21,7 @@ https://github.com/pvial00/DarkPass
 
 # Algorithms and authenticators
 
-All ciphers are recommended ciphers.  The top two recommended stream ciphers are Uvajda and Amagus and the top two block ciphers are ZanderFish3 and ZanderFish2.
+All ciphers, with the exception of Specjal, are recommended ciphers.  The top two recommended stream ciphers are Uvajda and Amagus and the top two block ciphers are ZanderFish3 and ZanderFish2.  Specjal is included for testing purposes.
 
 Fastest cipher is Uvajda
 
@@ -48,3 +48,7 @@ https://github.com/pvial00/Zanderfish3
 Spock-CBC 256 bit authenticated with Ganja 256 bit - 128 bit nonce length
 
 https://github.com/pvial00/Spock
+
+Specjal-CBC 256/512/1024 bit authenticated with Ganja 256 bit - 256 bit IV length
+
+https://github.com/pvial00/Specjal

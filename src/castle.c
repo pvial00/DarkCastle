@@ -15,11 +15,13 @@
 #include "ciphers/zanderfish2_ofb.c"
 #include "ciphers/zanderfish2_ctr.c"
 #include "ciphers/zanderfish3_cbc.c"
+#include "ciphers/zanderfish3_ofb.c"
 #include "ciphers/spock_cbc.c"
+#include "ciphers/specjal_cbc.c"
 
 void usage() {
-    printf("DarkCastle v0.6.3 - by KryptoMagik\n\n");
-    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\n\n");
+    printf("DarkCastle v0.6.4 - by KryptoMagik\n\n");
+    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nspecjal          256 bit\nspecjal512       512 bit\nspecjal1024      1024 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage: castle <algorithm> <-e/-d> <input file> <output file> <password>\n\n");
 }
 
@@ -172,6 +174,14 @@ int main(int argc, char *argv[]) {
             zander2_ctr_decrypt(infile_name, outfile_name, zanderfish2_key_length, zanderfish2ctr_nonce_length, zanderfish2_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zanderfish2_ctr_bufsize);
         }
     }
+    else if (strcmp(algorithm, "zanderfish3-ofb") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            zander3_ofb_encrypt(infile_name, outfile_name, zanderfish3_key_length, zanderfish3_nonce_length, zanderfish3_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zanderfish3_bufsize);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            zander3_ofb_decrypt(infile_name, outfile_name, zanderfish3_key_length, zanderfish3_nonce_length, zanderfish3_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zanderfish3_bufsize);
+        }
+    } 
     else if (strcmp(algorithm, "zanderfish3") == 0) {
         if (strcmp(mode, encrypt_symbol) == 0) {
             zander3_cbc_encrypt(infile_name, outfile_name, zanderfish3_key_length, zanderfish3_nonce_length, zanderfish3_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zanderfish3_bufsize);
@@ -194,6 +204,30 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
             zander3_cbc_decrypt(infile_name, outfile_name, zanderfish3_1024_key_length, zanderfish3_nonce_length, zanderfish3_mac_length, kdf_iterations, kdf_salt, password, keywrap1024_ivlen, zanderfish3_bufsize);
+        }
+    } 
+    else if (strcmp(algorithm, "specjal") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            specjal_cbc_encrypt(infile_name, outfile_name, specjal_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, specjal_bufsize);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            specjal_cbc_decrypt(infile_name, outfile_name, specjal_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, specjal_bufsize);
+        }
+    } 
+    else if (strcmp(algorithm, "specjal512") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            specjal_cbc_encrypt(infile_name, outfile_name, specjal512_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap512_ivlen, specjal_bufsize);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            specjal_cbc_decrypt(infile_name, outfile_name, specjal512_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap512_ivlen, specjal_bufsize);
+        }
+    } 
+    else if (strcmp(algorithm, "specjal1024") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            specjal_cbc_encrypt(infile_name, outfile_name, specjal1024_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap1024_ivlen, specjal_bufsize);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            specjal_cbc_decrypt(infile_name, outfile_name, specjal1024_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap1024_ivlen, specjal_bufsize);
         }
     } 
     return 0;
