@@ -21,7 +21,7 @@ https://github.com/pvial00/DarkPass
 
 # Algorithms and authenticators
 
-All ciphers, with the exception of Specjal, are recommended ciphers.  The top two recommended stream ciphers are Uvajda and Amagus and the top two block ciphers are ZanderFish3 and ZanderFish2.  Specjal is included for testing purposes.
+All ciphers, with the exception of Specjal, are recommended ciphers.  The top two recommended stream ciphers are Uvajda and Amagus and the top two block ciphers are ZanderFish3 and ZanderFish2.
 
 Fastest cipher is Uvajda
 
