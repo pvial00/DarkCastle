@@ -3,15 +3,38 @@
 #include <string.h>
 #include <stdint.h>
 
+int SR0[80] = {
+41, 26, 21, 17, 26, 10, 35, 20, 10, 9, 32, 33, 40, 43, 9, 36, 6, 29, 2, 26, 38, 32, 54, 8, 15, 34, 6, 34, 0, 55, 17, 16, 41, 43, 10, 50, 36, 49, 14, 2, 33, 23, 30, 36, 33, 36, 12, 8, 9, 2, 37, 35, 4, 36, 51, 39, 42, 40, 6, 45, 13, 48, 19, 27, 22, 24, 37, 49, 14, 17, 26, 35, 36, 25, 48, 41, 54, 53, 21, 15
+};
+
+int SR1[80] = {
+19, 36, 43, 9, 30, 20, 49, 28, 8, 10, 48, 14, 15, 10, 9, 14, 35, 38, 24, 13, 26, 15, 12, 52, 4, 21, 39, 11, 4, 25, 33, 47, 52, 2, 36, 25, 20, 50, 40, 46, 19, 20, 20, 34, 26, 20, 9, 33, 24, 0, 19, 53, 26, 40, 10, 8, 34, 27, 40, 10, 23, 30, 13, 42, 46, 22, 32, 27, 53, 23, 28, 19, 35, 24, 30, 30, 45, 33, 38, 42
+};
+
+int SR2[80] = {
+13, 36, 49, 8, 17, 37, 9, 20, 15, 26, 13, 37, 2, 31, 45, 22, 6, 55, 14, 38, 27, 22, 31, 50, 26, 40, 27, 44, 29, 44, 24, 21, 40, 36, 40, 48, 37, 25, 24, 26, 37, 43, 31, 11, 51, 46, 30, 39, 20, 27, 47, 43, 48, 37, 37, 44, 14, 22, 29, 54, 32, 33, 38, 2, 49, 17, 12, 8, 17, 54, 6, 40, 24, 20, 8, 55, 16, 10, 16, 18
+};
+
+int SR3[80] = {
+36, 14, 39, 47, 27, 12, 41, 37, 24, 50, 53, 55, 20, 37, 19, 43, 9, 12, 34, 32, 29, 16, 47, 20, 14, 16, 10, 51, 53, 54, 10, 6, 0, 28, 25, 33, 23, 2, 14, 33, 38, 0, 51, 6, 6, 11, 46, 37, 4, 17, 16, 28, 15, 54, 28, 22, 9, 28, 49, 4, 53, 41, 28, 44, 4, 34, 10, 33, 17, 40, 9, 2, 12, 54, 42, 33, 34, 21, 25, 48
+};
+
+
 struct specjal_state {
     uint64_t Ka[80];
     uint64_t Kb[80];
     uint64_t Kc[80];
     uint64_t Kd[80];
-    uint64_t C[80][4];
     uint64_t d[80][4];
     int rounds;
 };
+
+struct specjal_ksa_state {
+     uint64_t r[8];
+     uint64_t j;
+     uint64_t o;
+};
+
 
 uint64_t specjal_rotl(uint64_t a, int b) {
     return ((a << b) | (a >> (64 - b)));
@@ -21,6 +44,29 @@ uint64_t specjal_rotr(uint64_t a, int b) {
     return ((a >> b) | (a << (64 - b)));
 }
 
+void Suvajda_F(struct specjal_ksa_state *state) {
+    int i;
+    uint64_t x;
+    uint64_t y[8];
+    uint64_t o;
+    for (i = 0; i < 8; i++) {
+        y[i] = state->r[i]; 
+    }   
+    for (i = 0; i < 8; i++) {
+        x = state->r[i];
+        state->r[i] = (state->r[i] + state->r[(i + 1) & 0x07] + state->j);
+        state->r[i] = state->r[i] ^ x;
+        state->r[i] = specjal_rotl(state->r[i], 9);
+        state->j = (state->j + state->r[i]);
+    }   
+    for (i = 0; i < 8; i++) {
+        state->r[i] = state->r[i] + y[i];
+    }   
+    state->o = 0;
+    state->o = (((((((state->r[0] + state->r[6]) ^ state->r[1]) + state->r[5]) ^ state->r[2]) + state->r[4]) ^ state->r[3]) + state->r[7]);
+}
+
+
 void SroundF(struct specjal_state *state, uint64_t *xla, uint64_t *xlb, uint64_t *xra, uint64_t *xrb) {
     uint64_t a, b, c, d, temp;
     a = *xla;
@@ -28,56 +74,27 @@ void SroundF(struct specjal_state *state, uint64_t *xla, uint64_t *xlb, uint64_t
     c = *xra;
     d = *xrb;
     for (int r = 0; r < state->rounds; r++) {
-/* Confusion */
-        a += state->C[r][0];
-        b += state->C[r][1];
-        c += state->C[r][2];
-        d += state->C[r][3];
-
+        a = specjal_rotr(a, SR0[r]);
         a += d;
-        a = specjal_rotl(a, 44);
         a ^= state->Ka[r];
-
-        b += a;
-        b = specjal_rotl(b, 26);
+        b = specjal_rotr(b, SR1[r]);
+        b += c;
         b ^= state->Kb[r];
-        
+        c = specjal_rotl(c, SR2[r]);
         c += b;
-        c = specjal_rotl(c, 19);
         c ^= state->Kc[r];
-        
-        d += c;
-        d = specjal_rotl(d, 33);
+        d = specjal_rotl(d, SR3[r]);
+        d += a;
         d ^= state->Kd[r];
-
-/* Diffusion */
         a += b;
         b += a;
         c += d;
         d += c;
-        a += d;
-        d += a;
 
         a += state->d[r][0];
         b += state->d[r][1];
         c += state->d[r][2];
         d += state->d[r][3];
-        a ^= b;
-        b += a;
-
-
-/* Transposition  */
-        temp = b;
-        b = c;
-        c = temp;
-        temp = a;
-        a = d;
-        d = temp;
-        temp = b;
-        b = d;
-        d = temp; 
-
-
     }
     *xla = a;
     *xlb = b;
@@ -92,53 +109,27 @@ void SroundB(struct specjal_state *state, uint64_t *xla, uint64_t *xlb, uint64_t
     c = *xra;
     d = *xrb;
     for (int r = state->rounds; r --> 0;) {
-/* Transposition */
-        temp = b;
-        b = d;
-        d = temp;
-        temp = a;
-        a = d; 
-        d = temp;
-        temp = b;
-        b = c;
-        c = temp; 
-
-/* Diffusion */
-        b -= a;
-        a ^= b;
         d -= state->d[r][3];
         c -= state->d[r][2];
         b -= state->d[r][1];
         a -= state->d[r][0];
 
-        d -= a;
-        a -= d;
         d -= c;
         c -= d;
         b -= a;
         a -= b;
-/* Confusion */
         d ^= state->Kd[r];
-        d = specjal_rotr(d, 33);
-        d -= c;
-
+        d -= a;
+        d = specjal_rotr(d, SR3[r]);
         c ^= state->Kc[r];
-        c = specjal_rotr(c, 19);
         c -= b;
-  
+        c = specjal_rotr(c, SR2[r]);
         b ^= state->Kb[r];
-        b = specjal_rotr(b, 26);
-        b -= a;
-
+        b -= c;
+        b = specjal_rotl(b, SR1[r]);
         a ^= state->Ka[r];
-        a = specjal_rotr(a, 44);
         a -= d;
-
-        d -= state->C[r][3];
-        c -= state->C[r][2];
-        b -= state->C[r][1];
-        a -= state->C[r][0];
-
+        a = specjal_rotl(a, SR0[r]);
     }
     *xla = a;
     *xlb = b;
@@ -147,149 +138,50 @@ void SroundB(struct specjal_state *state, uint64_t *xla, uint64_t *xlb, uint64_t
 }
 
 void specjal_ksa(struct specjal_state *state, unsigned char * key, int keylen) {
-    uint64_t temp = 0x00000001;
-    struct specjal_state tempstate;
+    struct specjal_ksa_state kstate;
     int m = 0;
     int b;
     int inc = keylen / 8;
-    int l = 16;
     int step = 8;
-    uint64_t *k[16];
     state->rounds = (keylen / 8) + 64;
-    memset(k, 0, 16*sizeof(uint64_t));
+    memset(kstate.r, 0, 8*sizeof(uint64_t));
     memset(state->Ka, 0, state->rounds*sizeof(uint64_t));
     memset(state->Kb, 0, state->rounds*sizeof(uint64_t));
     memset(state->Kc, 0, state->rounds*sizeof(uint64_t));
     memset(state->Kd, 0, state->rounds*sizeof(uint64_t));
-    memset(tempstate.Ka, 0, state->rounds*sizeof(uint64_t));
-    memset(tempstate.Kb, 0, state->rounds*sizeof(uint64_t));
-    memset(tempstate.Kc, 0, state->rounds*sizeof(uint64_t));
-    memset(tempstate.Kd, 0, state->rounds*sizeof(uint64_t));
     memset(state->d, 0, 4*(state->rounds*sizeof(uint64_t)));
-    memset(state->C, 0, 4*(state->rounds*sizeof(uint64_t)));
-    memset(tempstate.d, 0, 4*(state->rounds*sizeof(uint64_t)));
-    memset(tempstate.C, 0, 4*(state->rounds*sizeof(uint64_t)));
+    kstate.j = 0;
     for (int i = 0; i < inc; i++) {
-        k[i] = 0;
-        k[i] = ((uint64_t)key[m] << 56) + ((uint64_t)key[m+1] << 48) + ((uint64_t)key[m+2] << 40) + ((uint64_t)key[m+3] << 32) + ((uint64_t)key[m+4] << 24) + ((uint64_t)key[m+5] << 16) + ((uint64_t)key[m+6] << 8) + (uint64_t)key[m+7];
+        kstate.r[i] = 0;
+        kstate.r[i] = ((uint64_t)key[m] << 56) + ((uint64_t)key[m+1] << 48) + ((uint64_t)key[m+2] << 40) + ((uint64_t)key[m+3] << 32) + ((uint64_t)key[m+4] << 24) + ((uint64_t)key[m+5] << 16) + ((uint64_t)key[m+6] << 8) + (uint64_t)key[m+7];
         m += step;
+    }
+    for (int i = 0; i < 8; i++) {
+        kstate.j = (kstate.j + kstate.r[i]);
     }
     
     int c = 0;
     for (int r = 0; r < state->rounds; r++) {
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            tempstate.Ka[r] ^= (uint64_t)k[x];
-        }
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            tempstate.Kb[r] ^= (uint64_t)k[x];
-        }
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            tempstate.Kc[r] ^= (uint64_t)k[x];
-        }
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            tempstate.Kd[r] ^= (uint64_t)k[x];
-        }
-    }
-    c = 0;
-    for (int r = 0; r < state->rounds; r++) {
-        for (int i = 0; i < 4; i++) {
-            SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-            SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-            SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-            SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-            state->d[r][i] = 0;
-            for (int x = 0; x < 16; x++) {
-	        tempstate.d[r][i] ^= (uint64_t)k[x];
-            } 
-        }
+        Suvajda_F(&kstate);
+        state->Ka[r] ^= (uint64_t)kstate.o;
+        Suvajda_F(&kstate);
+        state->Kb[r] ^= (uint64_t)kstate.o;
+        Suvajda_F(&kstate);
+        state->Kc[r] ^= (uint64_t)kstate.o;
+        Suvajda_F(&kstate);
+        state->Kd[r] ^= (uint64_t)kstate.o;
     }
     for (int r = 0; r < state->rounds; r++) {
-        for (int i = 0; i < 4; i++) {
-            SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-            SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-            SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-            SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-            state->C[r][i] = 0;
-            for (int x = 0; x < 16; x++) {
-	        tempstate.C[r][i] ^= (uint64_t)k[x];
-            } 
-        }
+        Suvajda_F(&kstate);
+        state->d[r][0] ^= (uint64_t)kstate.o;
+        Suvajda_F(&kstate);
+        state->d[r][1] ^= (uint64_t)kstate.o;
+        Suvajda_F(&kstate);
+        state->d[r][2] ^= (uint64_t)kstate.o;
+        Suvajda_F(&kstate);
+        state->d[r][3] ^= (uint64_t)kstate.o;
     }
-    for (int r = 0; r < state->rounds; r++) {
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            state->Ka[r] = state->Ka[r] ^ (uint64_t)k[x];
-        }
-    }
-    for (int r = 0; r < state->rounds; r++) {
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            state->Kb[r] ^= (uint64_t)k[x];
-        }
-    }
-    for (int r = 0; r < state->rounds; r++) {
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            state->Kc[r] ^= (uint64_t)k[x];
-        }
-    }
-    for (int r = 0; r < state->rounds; r++) {
-        SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-        SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-        SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-        SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-        for (int x = 0; x < 16; x++) {
-            state->Kd[r] ^= (uint64_t)k[x];
-        }
-    }
-    for (int r = 0; r < state->rounds; r++) {
-        for (int i = 0; i < 4; i++) {
-            SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-            SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-            SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-            SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-            for (int x = 0; x < 16; x++) {
-                state->d[r][i] = (uint64_t)k[x];
-            }
-        }
-    }
-    for (int r = 0; r < state->rounds; r++) {
-        for (int i = 0; i < 4; i++) {
-            SroundF(&tempstate, &k[0], &k[1], &k[2], &k[3]);
-            SroundF(&tempstate, &k[4], &k[5], &k[6], &k[7]);
-            SroundF(&tempstate, &k[8], &k[9], &k[10], &k[11]);
-            SroundF(&tempstate, &k[12], &k[13], &k[m+14], &k[15]);
-            state->C[r][i] = 0;
-            for (int x = 0; x < 16; x++) {
-                state->C[r][i] = (uint64_t)k[x];
-            }
-        }
-    }
+
 }
 
 void * specjal_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, unsigned char *password,  int keywrap_ivlen, int bufsize) {
@@ -320,8 +212,6 @@ void * specjal_cbc_encrypt(char * inputfile, char *outputfile, int key_length, i
     uint64_t last[4];
     uint64_t next[4];
     struct specjal_state state;
-    int iv_length = 32;
-    //int state->rounds = 1;
     uint64_t i;
     int c = 0;
     int m = 0;

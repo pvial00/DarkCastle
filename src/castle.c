@@ -18,10 +18,11 @@
 #include "ciphers/zanderfish3_ofb.c"
 #include "ciphers/spock_cbc.c"
 #include "ciphers/specjal_cbc.c"
+#include "ciphers/zywca_cbc.c"
 
 void usage() {
-    printf("DarkCastle v0.6.4 - by KryptoMagik\n\n");
-    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nspecjal          256 bit\nspecjal512       512 bit\nspecjal1024      1024 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
+    printf("DarkCastle v0.6.5 - by KryptoMagik\n\n");
+    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nspecjal          256 bit\nspecjal512       512 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\nzywca            256 bit\n");
     printf("Usage: castle <algorithm> <-e/-d> <input file> <output file> <password>\n\n");
 }
 
@@ -41,6 +42,7 @@ int main(int argc, char *argv[]) {
     int spock_nonce_length = 16;
     int amagus_nonce_length = 16;
     int specjal_nonce_length = 32;
+    int zywca_nonce_length = 32;
 
     int zanderfish_key_length = 32;
     int zanderfish2_key_length = 32;
@@ -55,7 +57,7 @@ int main(int argc, char *argv[]) {
     int amagus1024_key_length = 128;
     int specjal_key_length = 32;
     int specjal512_key_length = 64;
-    int specjal1024_key_length = 128;
+    int zywca_key_length = 32;
 
     int dark_mac_length = 32;
     int zanderfish_mac_length = 32;
@@ -65,6 +67,7 @@ int main(int argc, char *argv[]) {
     int spock_mac_length = 32;
     int amagus_mac_length = 32;
     int specjal_mac_length = 32;
+    int zywca_mac_length = 32;
 
     int dark_bufsize = 32768;
     int uvajda_bufsize = 32768;
@@ -75,6 +78,7 @@ int main(int argc, char *argv[]) {
     int zanderfish2_ctr_bufsize = 262144;
     int spock_bufsize = 131072;
     int specjal_bufsize = 131072;
+    int zywca_bufsize = 262144;
     
 
     if (argc != 6) {
@@ -222,12 +226,12 @@ int main(int argc, char *argv[]) {
             specjal_cbc_decrypt(infile_name, outfile_name, specjal512_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap512_ivlen, specjal_bufsize);
         }
     } 
-    else if (strcmp(algorithm, "specjal1024") == 0) {
+    else if (strcmp(algorithm, "zywca") == 0) {
         if (strcmp(mode, encrypt_symbol) == 0) {
-            specjal_cbc_encrypt(infile_name, outfile_name, specjal1024_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap1024_ivlen, specjal_bufsize);
+            zywca_cbc_encrypt(infile_name, outfile_name, zywca_key_length, zywca_nonce_length, zywca_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zywca_bufsize);
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
-            specjal_cbc_decrypt(infile_name, outfile_name, specjal1024_key_length, specjal_nonce_length, specjal_mac_length, kdf_iterations, kdf_salt, password, keywrap1024_ivlen, specjal_bufsize);
+            zywca_cbc_decrypt(infile_name, outfile_name, zywca_key_length, zywca_nonce_length, zywca_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zywca_bufsize);
         }
     } 
     return 0;
