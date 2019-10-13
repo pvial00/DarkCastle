@@ -35,7 +35,7 @@ void qapla_F(struct qapla_state *state) {
         state->r[4] = rotateleft64((state->r[4] ^ state->r[3]), 21);
         state->r[5] += state->r[6];
         state->r[6] = rotateleft64((state->r[6] ^ state->r[5]), 12);
-        state->r[7] += state->r[7];
+        state->r[7] += state->r[0];
         state->r[0] = rotateleft64((state->r[0] ^ state->r[7]), 18);
     }
     for (i = 0; i < 8; i++) {

@@ -22,7 +22,7 @@
 #include "ciphers/qapla.c"
 
 void usage() {
-    printf("DarkCastle v0.6.6 - by KryptoMagik\n\n");
+    printf("DarkCastle v0.6.6.6 - by KryptoMagik\n\n");
     printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nqapla            256 bit\nspecjal          256 bit\nspecjal512       512 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\nzywca            256 bit\n");
     printf("Usage: castle <algorithm> <-e/-d> <input file> <output file> <password>\n\n");
 }
