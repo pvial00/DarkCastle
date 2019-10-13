@@ -19,10 +19,11 @@
 #include "ciphers/spock_cbc.c"
 #include "ciphers/specjal_cbc.c"
 #include "ciphers/zywca_cbc.c"
+#include "ciphers/qapla.c"
 
 void usage() {
-    printf("DarkCastle v0.6.5 - by KryptoMagik\n\n");
-    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nspecjal          256 bit\nspecjal512       512 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\nzywca            256 bit\n");
+    printf("DarkCastle v0.6.6 - by KryptoMagik\n\n");
+    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nqapla            256 bit\nspecjal          256 bit\nspecjal512       512 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\nzywca            256 bit\n");
     printf("Usage: castle <algorithm> <-e/-d> <input file> <output file> <password>\n\n");
 }
 
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
     int amagus_nonce_length = 16;
     int specjal_nonce_length = 32;
     int zywca_nonce_length = 32;
+    int qapla_nonce_length = 16;
 
     int zanderfish_key_length = 32;
     int zanderfish2_key_length = 32;
@@ -58,6 +60,7 @@ int main(int argc, char *argv[]) {
     int specjal_key_length = 32;
     int specjal512_key_length = 64;
     int zywca_key_length = 32;
+    int qapla_key_length = 32;
 
     int dark_mac_length = 32;
     int zanderfish_mac_length = 32;
@@ -68,6 +71,7 @@ int main(int argc, char *argv[]) {
     int amagus_mac_length = 32;
     int specjal_mac_length = 32;
     int zywca_mac_length = 32;
+    int qapla_mac_length = 32;
 
     int dark_bufsize = 32768;
     int uvajda_bufsize = 32768;
@@ -79,6 +83,7 @@ int main(int argc, char *argv[]) {
     int spock_bufsize = 131072;
     int specjal_bufsize = 131072;
     int zywca_bufsize = 262144;
+    int qapla_bufsize = 262144;
     
 
     if (argc != 6) {
@@ -234,5 +239,13 @@ int main(int argc, char *argv[]) {
             zywca_cbc_decrypt(infile_name, outfile_name, zywca_key_length, zywca_nonce_length, zywca_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, zywca_bufsize);
         }
     } 
+    else if (strcmp(algorithm, "qapla") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            qapla_encrypt(infile_name, outfile_name, qapla_key_length, qapla_nonce_length, qapla_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, qapla_bufsize);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            qapla_decrypt(infile_name, outfile_name, qapla_key_length, qapla_nonce_length, qapla_mac_length, kdf_iterations, kdf_salt, password, keywrap256_ivlen, qapla_bufsize);
+        }
+    }
     return 0;
 }
