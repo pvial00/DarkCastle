@@ -22,22 +22,22 @@ void toQ_F(struct toQ_state *state) {
         y[i] = state->r[i];
     }
     for (i = 0; i < state->rounds; i++) {
-        state->r[0] += state->r[4];
+        state->r[0] += state->r[7];
         state->r[1] = rotateleft64((state->r[1] ^ state->r[0]), 9);
         state->r[2] += state->r[5];
-        state->r[3] = rotateleft64((state->r[3] ^ state->r[1]), 21);
-        state->r[4] += state->r[6];
-        state->r[5] = rotateleft64((state->r[5] ^ state->r[2]), 12);
-        state->r[6] += state->r[7];
-        state->r[7] = rotateleft64((state->r[7] ^ state->r[3]), 18);
+        state->r[3] = rotateleft64((state->r[3] ^ state->r[2]), 21);
+        state->r[4] += state->r[3];
+        state->r[5] = rotateleft64((state->r[5] ^ state->r[4]), 12);
+        state->r[6] += state->r[1];
+        state->r[7] = rotateleft64((state->r[7] ^ state->r[6]), 18);
         state->r[1] += state->r[0];
-        state->r[2] = rotateleft64((state->r[2] ^ state->r[1]), 9);
+        state->r[2] = rotateleft64((state->r[2] ^ state->r[7]), 9);
         state->r[3] += state->r[2];
-        state->r[4] = rotateleft64((state->r[4] ^ state->r[3]), 21);
+        state->r[4] = rotateleft64((state->r[4] ^ state->r[5]), 21);
         state->r[5] += state->r[4];
-        state->r[6] = rotateleft64((state->r[6] ^ state->r[5]), 12);
+        state->r[6] = rotateleft64((state->r[6] ^ state->r[3]), 12);
         state->r[7] += state->r[6];
-        state->r[0] = rotateleft64((state->r[0] ^ state->r[7]), 18);
+        state->r[0] = rotateleft64((state->r[0] ^ state->r[1]), 18);
     }
     for (i = 0; i < 8; i++) {
         state->r[i] = state->r[i] + y[i];
@@ -117,7 +117,7 @@ void * toQ_encrypt(char * inputfile, char *outputfile, int key_length, int nonce
             toQ_F(&state);
             k[c] = (state.o[0] & 0xFF00000000000000) >> 56;
             k[c+1] = (state.o[0] & 0x00FF000000000000) >> 48;
-            k[c+2] = (state.o[0] & 0x0000FF000000000) >> 40;
+            k[c+2] = (state.o[0] & 0x0000FF0000000000) >> 40;
             k[c+3] = (state.o[0] & 0x000000FF00000000) >> 32;
             k[c+4] = (state.o[0] & 0x00000000FF000000) >> 24;
             k[c+5] = (state.o[0] & 0x0000000000FF0000) >> 16;
@@ -211,7 +211,7 @@ void * toQ_decrypt(char * inputfile, char *outputfile, int key_length, int nonce
                 toQ_F(&state);
                 k[c] = (state.o[0] & 0xFF00000000000000) >> 56;
                 k[c+1] = (state.o[0] & 0x00FF000000000000) >> 48;
-                k[c+2] = (state.o[0] & 0x0000FF000000000) >> 40;
+                k[c+2] = (state.o[0] & 0x0000FF0000000000) >> 40;
                 k[c+3] = (state.o[0] & 0x000000FF00000000) >> 32;
                 k[c+4] = (state.o[0] & 0x00000000FF000000) >> 24;
                 k[c+5] = (state.o[0] & 0x0000000000FF0000) >> 16;
