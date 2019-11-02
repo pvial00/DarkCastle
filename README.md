@@ -18,6 +18,15 @@ https://github.com/pvial00/DarkPass
 
 *** Tested on MacOS, FreeBSD, Linux, Solaris, OpenBSD, NetBSD
 
+# Q'loQX Castle
+
+*** Requires pycrypto
+
+Q'loQX Castle is a Python wrapper around DarkCastle providing authenticated public key encryption.
+
+Q'loQX Castle requires DarkCastle and DarkPass.  DarkCastle is used for symmentric file encryption and message authentication.  DarkPass is for password generation.  castle.py then uses Q'loQX to share a 128 character password between two people.  The program is meant to share small files over email.  It is meant to work with 3072 bit QX keys.  Recommended DarkCastle cipher is zanderfish3 which uses a 256 bit key.
+
+
 
 # Algorithms and authenticators
 
