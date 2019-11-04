@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O3 -std=c99 -w
+CFLAGS=-O3 -w -lssl -lcrypto -std=c99 -I/usr/local/opt/openssl/include -L/usr/local/opt/openssl/lib
 TARGET=castle
 all: $(TARGET)
 

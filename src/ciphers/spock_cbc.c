@@ -145,7 +145,33 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
     }
 }
 
-void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, unsigned char *password,  int keywrap_ivlen, int bufsize) {
+void * spock_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
+    struct qloq_ctx ctx;
+    struct qloq_ctx Sctx;
+    load_pkfile(keyfile1, &ctx);
+    load_skfile(keyfile2, &Sctx);
+    unsigned char *password[password_len];
+    amagus_random(password, password_len);
+    BIGNUM *tmp;
+    BIGNUM *BNctxt;
+    BIGNUM *S;
+    tmp = BN_new();
+    BNctxt = BN_new();
+    S = BN_new();
+    unsigned char *X[mask_bytes];
+    unsigned char *Y[mask_bytes];
+    amagus_random(Y, mask_bytes);
+    mypad_encrypt(password, password_len, X, mask_bytes, Y);
+    BN_bin2bn(X, mask_bytes, tmp);
+    cloak(&ctx, BNctxt, tmp);
+    sign(&Sctx, S, BNctxt);
+    int ctxtbytes = BN_num_bytes(BNctxt);
+    unsigned char *password_ctxt[ctxtbytes];
+    BN_bn2bin(BNctxt, password_ctxt);
+    int Sbytes = BN_num_bytes(S);
+    unsigned char *sign_ctxt[Sbytes];
+    BN_bn2bin(S, sign_ctxt);
+
     int blocksize = 16;
     FILE *infile, *outfile;
     unsigned char buffer[bufsize];
@@ -157,7 +183,7 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
     unsigned char *K[key_length];
-    manja_kdf(password, strlen(password), key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    manja_kdf(password, password_len, key, key_length, kdf_salt, salt_len, kdf_iterations);
     unsigned char *kwnonce[keywrap_ivlen];
     key_wrap_encrypt(keyprime, key_length, key, K, kwnonce);
     infile = fopen(inputfile, "rb");
@@ -165,6 +191,9 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
     fseek(infile, 0, SEEK_SET);
+    fwrite(password_ctxt, 1, mask_bytes, outfile);
+    fwrite(Y, 1, mask_bytes, outfile);
+    fwrite(sign_ctxt, 1, Sbytes, outfile);
     fwrite(kwnonce, 1, keywrap_ivlen, outfile);
     fwrite(iv, 1, nonce_length, outfile);
     fwrite(K, 1, key_length, outfile);
@@ -245,11 +274,21 @@ void * spock_cbc_encrypt(char * inputfile, char *outputfile, int key_length, int
     }
     fclose(infile);
     fclose(outfile);
-    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
     ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, unsigned char *password,  int keywrap_ivlen, int bufsize) {
+void * spock_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
+    struct qloq_ctx ctx;
+    BIGNUM *tmp;
+    BIGNUM *tmpS;
+    BIGNUM *BNctxt;
+    tmp = BN_new();
+    tmpS = BN_new();
+    BNctxt = BN_new();
+    load_skfile(keyfile1, &ctx);
+    load_pkfile(keyfile2, &ctx);
+
     int blocksize = 16;
     FILE *infile, *outfile;
     unsigned char buffer[bufsize];
@@ -259,18 +298,37 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
     unsigned char mac_key[key_length];
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
-    manja_kdf(password, strlen(password), key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
-    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, strlen(kdf_salt), kdf_iterations);
+    unsigned char *passtmp[mask_bytes];
+    unsigned char *Ytmp[mask_bytes];
+    unsigned char *signtmp[mask_bytes];
     unsigned char *kwnonce[keywrap_ivlen];
     infile = fopen(inputfile, "rb");
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
-    datalen = datalen - key_length - mac_length - nonce_length - keywrap_ivlen;
+    datalen = datalen - key_length - mac_length - nonce_length - keywrap_ivlen - mask_bytes - mask_bytes - mask_bytes;
     fseek(infile, 0, SEEK_SET);
     fread(&mac, 1, mac_length, infile);
+    fread(passtmp, 1, mask_bytes, infile);
+    fread(Ytmp, 1, mask_bytes, infile);
+    fread(signtmp, 1, mask_bytes, infile);
     fread(kwnonce, 1, keywrap_ivlen, infile);
     fread(iv, 1, nonce_length, infile);
     fread(keyprime, 1, key_length, infile);
+    BN_bin2bn(passtmp, mask_bytes, tmp);
+    decloak(&ctx, BNctxt, tmp);
+    int ctxtbytes = BN_num_bytes(BNctxt);
+    unsigned char password[ctxtbytes];
+    BN_bn2bin(BNctxt, password);
+    unsigned char *passkey[password_len];
+    mypad_decrypt(passtmp, password, ctxtbytes, Ytmp);
+    memcpy(passkey, passtmp, password_len);
+    BN_bin2bn(signtmp, mask_bytes, tmpS);
+    if (verify(&ctx, tmp, BNctxt) != 0) {
+        printf("Error: Signature verification failed. Message is not authentic.\n");
+        exit(2);
+    }
+    manja_kdf(passkey, password_len, key, key_length, kdf_salt, salt_len, kdf_iterations);
+    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
     key_wrap_decrypt(keyprime, key_length, key, kwnonce);
 
     uint8_t k[16];
@@ -297,7 +355,7 @@ void * spock_cbc_decrypt(char * inputfile, char *outputfile, int key_length, int
     if (ganja_hmac_verify(inputfile, mac_key, key_length) == 0) {
         outfile = fopen(outputfile, "wb");
         infile = fopen(inputfile, "rb");
-        fseek(infile, (mac_length + keywrap_ivlen + nonce_length + key_length), SEEK_SET);
+        fseek(infile, (mac_length + keywrap_ivlen + nonce_length + key_length + (mask_bytes*3)), SEEK_SET);
         c = 0;
         for (int i = 0; i < 4; i++) {
             last[i] = (iv[c] << 24) + (iv[c+1] << 16) + (iv[c+2] << 8) + iv[c+3];
