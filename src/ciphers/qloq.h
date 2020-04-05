@@ -280,6 +280,9 @@ int keygen(struct qloq_ctx * ctx, int psize) {
         BN_add(tmp3, K, C);
         BN_div(tmp0, rtmp0, tmp2, tmp3, bnctx);
         BN_add(ctx->n, tmp0, tmp4);
+        while (BN_is_prime_ex(ctx->n, BN_prime_checks, NULL, NULL) == 1) {
+            BN_add(ctx->n, ctx->n, 1);
+        }
         /* Generate the mask */
         BN_mul(tmp0, K, G, bnctx);
         BN_add(tmp1, K, C);
