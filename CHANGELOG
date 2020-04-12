@@ -1,3 +1,7 @@
+v0.9 - Encrypted secret key file + passphrase security
+
+v0.8 - Critical Q'loQ security fix
+
 v0.7 - Integration of Q'loQ public key algorithm which replaces the need for passwords.  It also allows for key exchange between two people.
 
 v0.6.9 - toQ won an internal battle and was promoted to Qapla.  Specjal and Zywca to be integrated in BrokenCastle and will no longer be developed for DarkCastle.
