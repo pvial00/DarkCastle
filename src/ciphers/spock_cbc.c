@@ -145,11 +145,11 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
     }
 }
 
-void * spock_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
+void * spock_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
     struct qloq_ctx ctx;
     struct qloq_ctx Sctx;
     load_pkfile(keyfile1, &ctx);
-    load_skfile(keyfile2, &Sctx);
+    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &Sctx);
     unsigned char *password[password_len];
     amagus_random(password, password_len);
     BIGNUM *tmp;
@@ -278,7 +278,7 @@ void * spock_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char 
     ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-void * spock_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
+void * spock_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
     struct qloq_ctx ctx;
     BIGNUM *tmp;
     BIGNUM *tmpS;
@@ -286,7 +286,7 @@ void * spock_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char 
     tmp = BN_new();
     tmpS = BN_new();
     BNctxt = BN_new();
-    load_skfile(keyfile1, &ctx);
+    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &ctx);
     load_pkfile(keyfile2, &ctx);
 
     int blocksize = 16;

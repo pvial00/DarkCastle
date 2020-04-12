@@ -3,82 +3,92 @@
 #include <string.h>
 #include <stdint.h>
 
-int zblocklen = 16;
-int z2rounds = 16;
+int z3blocklen = 32;
 
-struct zander_state {
-    int S[8][256];
-    uint64_t K[16];
-    uint64_t last[2];
-    uint64_t next[2];
-    uint64_t r[16];
+int t0 = 0x57bf953b78f054bc;
+int t1 = 0x0a78a94e98868e69;
+
+struct zander3_state {
+    uint64_t K[80][4];
+    uint64_t K2[80][4];
+    uint64_t K3[80][4];
+    uint64_t K4[80][2];
+    uint64_t D[4];
+    uint64_t last[4];
+    uint64_t next[4];
+    int rounds;
 };
 
-struct zksa_state {
+struct z3ksa_state {
     uint64_t r[16];
     uint64_t o;
 };
 
-uint64_t zander_rotl(uint64_t a, int b) {
+uint64_t zander3_rotl(uint64_t a, int b) {
     return ((a << b) | (a >> (64 - b)));
 }
 
-uint64_t zander_rotr(uint64_t a, int b) {
+uint64_t zander3_rotr(uint64_t a, int b) {
     return ((a >> b) | (a << (64 - b)));
 }
 
-void *zander_F(struct zksa_state *state) {
+void *zander3_F(struct z3ksa_state *state) {
     int r;
-    for (r = 0; r < 10; r++) {
+    for (r = 0; r < 16; r++) {
         state->r[0] += state->r[6];
         state->r[1] ^= state->r[15];
-        state->r[2] = zander_rotl((state->r[2] ^ state->r[12]), 9);
+        state->r[2] = zander3_rotl((state->r[2] ^ state->r[12]), 9);
         state->r[3] += state->r[9];
         state->r[4] ^= state->r[11];
-        state->r[5] = zander_rotr((state->r[5] ^ state->r[10]), 6);
+        state->r[5] = zander3_rotr((state->r[5] ^ state->r[10]), 6);
         state->r[6] += state->r[13];
         state->r[7] ^= state->r[8];
-        state->r[8] = zander_rotl((state->r[8] ^ state->r[3]), 11);
+        state->r[8] = zander3_rotl((state->r[8] ^ state->r[3]), 11);
         state->r[9] += state->r[1];
         state->r[10] ^= state->r[4];
-        state->r[11] = zander_rotr((state->r[8] ^ state->r[7]), 7);
+        state->r[11] = zander3_rotr((state->r[8] ^ state->r[7]), 7);
         state->r[12] += state->r[0];
         state->r[13] ^= state->r[2];
-        state->r[14] = zander_rotl((state->r[14] ^ state->r[0]), 3);
+        state->r[14] = zander3_rotl((state->r[14] ^ state->r[0]), 3);
         state->r[15] += state->r[5];
 
         state->r[15] += state->r[6];
         state->r[2] ^= state->r[15];
-        state->r[14] = zander_rotl((state->r[14] ^ state->r[12]), 9);
+        state->r[14] = zander3_rotl((state->r[14] ^ state->r[12]), 9);
         state->r[4] += state->r[9];
         state->r[13] ^= state->r[11];
-        state->r[6] = zander_rotr((state->r[6] ^ state->r[10]), 6);
+        state->r[6] = zander3_rotr((state->r[6] ^ state->r[10]), 6);
         state->r[12] += state->r[13];
         state->r[8] ^= state->r[8];
-        state->r[11] = zander_rotl((state->r[11] ^ state->r[3]), 11);
+        state->r[11] = zander3_rotl((state->r[11] ^ state->r[3]), 11);
         state->r[10] += state->r[1];
         state->r[1] ^= state->r[4];
-        state->r[3] = zander_rotr((state->r[3] ^ state->r[7]), 7);
+        state->r[3] = zander3_rotr((state->r[3] ^ state->r[7]), 7);
         state->r[5] += state->r[0];
         state->r[7] ^= state->r[2];
-        state->r[9] = zander_rotl((state->r[9] ^ state->r[0]), 3);
+        state->r[9] = zander3_rotl((state->r[9] ^ state->r[0]), 3);
         state->r[0] += state->r[5];
     }
+    state->o = 0;
     for (r = 0; r < 16; r++) {
         state->o ^= state->r[r];
     }
 }
 
-void zgen_subkeys(struct zander_state * state, unsigned char * key, int keylen, unsigned char * iv, int ivlen, int z2rounds) {
-    struct zksa_state kstate;
+void z3gen_subkeys(struct zander3_state * state, unsigned char * key, int keylen, unsigned char * iv, int ivlen) {
+    struct z3ksa_state kstate;
     int c = 0;
     int i;
-    memset(state->r, 0, 16*sizeof(uint64_t));
-    memset(state->K, 0, 16*sizeof(uint64_t));
+    int s;
+    state->rounds = ((keylen / 4) + ((keylen / 8) + (48 - (keylen / 8))));
+    memset(state->K, 0, state->rounds*(4*sizeof(uint64_t)));
+    memset(state->K2, 0, state->rounds*(4*sizeof(uint64_t)));
+    memset(state->K3, 0, state->rounds*(4*sizeof(uint64_t)));
+    memset(state->K4, 0, state->rounds*(2*sizeof(uint64_t)));
     memset(&kstate.r, 0, 16*sizeof(uint64_t));
     memset(&kstate.o, 0, sizeof(uint64_t));
-    memset(state->last, 0, 2*sizeof(uint64_t));
-    memset(state->next, 0, 2*sizeof(uint64_t));
+    memset(state->last, 0, 4*sizeof(uint64_t));
+    memset(state->next, 0, 4*sizeof(uint64_t));
 
     for (i = 0; i < (keylen / 8); i++) {
         kstate.r[i] = ((uint64_t)key[c] << 56) + ((uint64_t)key[c+1] << 48) + ((uint64_t)key[c+2] << 40) + ((uint64_t)key[c+3] << 32) + ((uint64_t)key[c+4] << 24) + ((uint64_t)key[c+5] << 16) + ((uint64_t)key[c+6] << 8) + (uint64_t)key[c+7];
@@ -90,155 +100,187 @@ void zgen_subkeys(struct zander_state * state, unsigned char * key, int keylen, 
         state->last[i] = ((uint64_t)iv[c] << 56) + ((uint64_t)iv[c+1] << 48) + ((uint64_t)iv[c+2] << 40) + ((uint64_t)iv[c+3] << 32) + ((uint64_t)iv[c+4] << 24) + ((uint64_t)iv[c+5] << 16) + ((uint64_t)iv[c+6] << 8) + (uint64_t)iv[c+7];
 	c += 8;
     }
-    for (i = 0; i < z2rounds; i++) {
-        zander_F(&kstate);
-        state->K[i] = 0;
-	state->K[i] = kstate.o;
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 4; s++) {
+            zander3_F(&kstate);
+            state->K[i][s] = 0;
+	    state->K[i][s] = kstate.o;
+        }
     }
-    for (i = 0; i < 16; i++) {
-        state->r[i] = state->K[i];
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 4; s++) {
+            zander3_F(&kstate);
+            state->K2[i][s] = 0;
+	    state->K2[i][s] = kstate.o;
+        }
     }
-    for (i = 0; i < z2rounds; i++) {
-        zander_F(&kstate);
-        state->K[i] = 0;
-	state->K[i] = kstate.o;
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 4; s++) {
+            zander3_F(&kstate);
+            state->K3[i][s] = 0;
+	    state->K3[i][s] = kstate.o;
+        }
     }
+    for (i = 0; i < state->rounds; i++) {
+        for (s = 0; s < 2; s++) {
+            zander3_F(&kstate);
+            state->K4[i][s] = 0;
+	    state->K4[i][s] = kstate.o;
+        }
+    }
+    for (s = 0; s < 4; s++) {
+        zander3_F(&kstate);
+        state->D[s] = 0;
+        state->D[s] = kstate.o;
+    }
+}
+
+uint64_t z3block_encrypt(struct zander3_state * state, uint64_t *xl, uint64_t *xr, uint64_t *xp, uint64_t *xq) {
+    int i;
+    uint64_t Xr, Xl, Xp, Xq, temp;
+
+    Xl = *xl;
+    Xr = *xr;
+    Xp = *xp;
+    Xq = *xq;
+
+    for (i = 0; i < state->rounds; i++) {
+/* Confusion */
+        Xq += state->K[i][0];
+        Xr += Xq + state->K[i][1];
+        Xl = zander3_rotl(Xl, 18) ^ Xp;
+
+        Xp += state->K[i][2];
+        Xl += Xp + state->K[i][3];
+        Xq = zander3_rotl(Xq, 26) ^ Xr;
+
+        Xr += Xq + t0;
+        Xl += Xp + state->K2[i][0];
+        Xp = zander3_rotl(Xp, 14) ^ Xl;
+
+        Xq += state->K2[i][1];
+        Xp += Xq;
+        Xr = zander3_rotl(Xr, 16) ^ Xq;
+        
+        Xl += state->K2[i][2];
+        Xr += Xl;
+        Xq = zander3_rotl(Xq, 34) ^ Xp;
+
+        Xr += state->K2[i][3];
+        Xp += Xq;
+        Xl = zander3_rotl(Xl, 28) ^ Xq;
+
+/* Diffusion */
+
+        Xl = zander3_rotr(Xl, 46);
+        Xl += Xq;
+        Xl ^= state->K4[i][0];
+
+        Xr = zander3_rotr(Xr, 34);
+        Xr += Xp + t1;
+        Xr ^= state->K4[i][1];
+
+        Xp = zander3_rotl(Xp, 4);
+        Xp ^= Xr;
+        
+        Xq = zander3_rotl(Xq, 6);
+        Xq ^= Xl;
+
+        Xl += state->K3[i][2];
+        Xr += state->K3[i][3];
+        Xp += state->K3[i][1];
+        Xq += state->K3[i][0];
+
+    }
+    *xl = Xl + state->D[3];
+    *xr = Xr + state->D[2];
+    *xp = Xp + state->D[1]; 
+    *xq = Xq + state->D[0];
 
 }
 
-void zgen_sbox(struct zander_state * state, unsigned char * key, int keylen) {
-    int i, o;
-    int s;
-    int j = 0;
-    int c = 0;
-    int temp;
-    int k[256];
-    for (i = 0; i < 256; i++) {
-        k[i] = i;
-        k[i] ^= key[c];
-        c = (c + 1) % keylen;
+uint64_t z3block_decrypt(struct zander3_state * state, uint64_t *xl, uint64_t *xr, uint64_t *xp, uint64_t *xq) {
+    int i;
+    uint64_t Xr, Xl, Xp, Xq, temp;
+    
+    Xl = *xl;
+    Xr = *xr;
+    Xp = *xp;
+    Xq = *xq;
+    Xl -= state->D[3];
+    Xr -= state->D[2];
+    Xp -= state->D[1];
+    Xq -= state->D[0];
+
+    for (i = (state->rounds - 1); i != -1; i--) {
+/* Diffusion */
+
+        Xq -= state->K3[i][0];
+        Xp -= state->K3[i][1];
+        Xr -= state->K3[i][3];
+        Xl -= state->K3[i][2];
+
+        Xq ^= Xl;
+        Xq = zander3_rotr(Xq, 6);
+
+        Xp ^= Xr;
+        Xp = zander3_rotr(Xp, 4);
+
+        Xr ^= state->K4[i][1];
+        Xr -= Xp + t1;
+        Xr = zander3_rotl(Xr, 34);
+
+        Xl ^= state->K4[i][0];
+        Xl -= Xq;
+        Xl = zander3_rotl(Xl, 46);
+
+/* Confusion */
+        
+        temp = Xl ^ Xq;
+        Xl = zander3_rotr(temp, 28);
+        Xp -= Xq;
+        Xr -= state->K2[i][3];
+
+        temp = Xq ^ Xp;
+        Xq = zander3_rotr(temp, 34);
+        Xr -= Xl;
+        Xl -= state->K2[i][2];
+
+        temp = Xr ^ Xq;
+        Xr = zander3_rotr(temp, 16);
+        Xp -= Xq;
+        Xq -= state->K2[i][1];
+
+        temp = Xp ^ Xl;
+        Xp = zander3_rotr(temp, 14);
+        Xl -= Xp + state->K2[i][0];
+        Xr -= Xq + t0;
+
+     
+        temp = Xq ^ Xr;
+        Xq = zander3_rotr(temp, 26);
+        Xl -= Xp + state->K[i][3];
+        Xp -= state->K[i][2];
+
+        temp = Xl ^ Xp;
+        Xl = zander3_rotr(temp, 18);
+        Xr -= Xq + state->K[i][1];
+        Xq -= state->K[i][0];
+
         
     }
-    for (s = 0; s < 8; s++) {
-        for (i = 0; i < 256; i++) {
-            state->S[s][i] = 0;
-            state->S[s][i] = i;
-        }
-    }
-    for (s = 0; s < 8; s++) {
-        for (i = 0; i < 256; i++) {
-            j = k[j];
-            k[j] = (k[c] + k[j]) & 0xff;
-            o = (k[k[j]] + k[j]) & 0xff;
-            temp = state->S[s][i];
-            state->S[s][i] = state->S[s][o];
-            state->S[s][o] = temp;
-        }
-    }
-}
-
-uint64_t zF(struct zander_state * state, uint64_t xr) {
-    int v, x, y, z, a, b, c, d;
-    v = (xr & 0xFF00000000000000) >> 56;
-    x = (xr & 0x00FF000000000000) >> 48;
-    y = (xr & 0x0000FF0000000000) >> 40;
-    z = (xr & 0x000000FF00000000) >> 32;
-    a = (xr & 0x00000000FF000000) >> 24;
-    b = (xr & 0x0000000000FF0000) >> 16;
-    c = (xr & 0x000000000000FF00) >> 8;
-    d = (xr & 0x00000000000000FF);
-
-    a = a ^ state->S[4][a];
-    b = b ^ state->S[5][b];
-    c = c ^ state->S[6][c];
-    d = d ^ state->S[7][d];
-
-    a = a ^ state->S[7][d] + state->S[6][a];
-    b = b ^ state->S[6][c];
-    c = c ^ state->S[5][b];
-    d = d ^ state->S[4][a];
-
-    a = a ^ v;
-    b = b ^ x;
-    c = c ^ y;
-    d = d ^ z;
-    
-    v = v ^ state->S[0][v];
-    x = x ^ state->S[1][x];
-    y = y ^ state->S[2][y];
-    z = z ^ state->S[3][z];
-
-    v = v ^ state->S[1][z] + state->S[2][v];
-    x = x ^ state->S[2][y];
-    y = y ^ state->S[3][x];
-    z = z ^ state->S[0][v];
-    xr = ((uint64_t)v << 56) + ((uint64_t)x << 48) + ((uint64_t)y << 40) + ((uint64_t)z << 32) + ((uint64_t)a << 24) + ((uint64_t)b << 16) + ((uint64_t)c << 8) + d;
-    return xr;
-}
-
-uint64_t zblock_encrypt(struct zander_state * state, uint64_t *xl, uint64_t *xr) {
-    int i;
-    uint64_t temp;
-    uint64_t Xl;
-    uint64_t Xr;
-
-    Xl = *xl;
-    Xr = *xr;
-    for (i = 0; i < z2rounds; i++) {
-        Xr = Xr ^ state->K[i];
-        Xl = Xl ^ state->r[i];
-        Xl = Xl ^ zF(state, Xr);
-        Xl = zander_rotl(Xl, 9);
-        Xl += Xr;
-        Xr += Xl;
-
-        temp = Xl;
-        Xl = Xr;
-        Xr = temp;
-
-    }
-    temp = Xl;
-    Xl = Xr;
-    Xr = temp;
-
     *xl = Xl;
     *xr = Xr;
-}
-
-uint64_t zblock_decrypt(struct zander_state * state, uint64_t *xl, uint64_t *xr) {
-    int i;
-    uint64_t temp;
-    uint64_t Xl;
-    uint64_t Xr;
-
-    Xl = *xl;
-    Xr = *xr;
-    for (i = (z2rounds - 1); i != -1; i--) {
-        Xr -= Xl;
-        Xl -= Xr;
-        Xl = zander_rotr(Xl, 9);
-        Xl = Xl ^ zF(state, Xr);
-        Xl = Xl ^ state->r[i];
-        Xr = Xr ^ state->K[i];
-
-        temp = Xl;
-        Xl = Xr;
-        Xr = temp;
-
-    }
-    temp = Xl;
-    Xl = Xr;
-    Xr = temp;
+    *xp = Xp;
+    *xq = Xq;
     
-    *xl = Xl;
-    *xr = Xr;
 }
 
-void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len,  int password_len,  int keywrap_ivlen, int mask_bytes,  int bufsize, unsigned char * passphrase) {
+void * zander3_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
     struct qloq_ctx ctx;
     struct qloq_ctx Sctx;
     load_pkfile(keyfile1, &ctx);
-    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &Sctx);
+    load_skfile(keyfile2, &Sctx);
     unsigned char *password[password_len];
     amagus_random(password, password_len);
     BIGNUM *tmp;
@@ -261,18 +303,18 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     unsigned char *sign_ctxt[Sbytes];
     BN_bn2bin(S, sign_ctxt);
 
-    int blocksize = 16;
     FILE *infile, *outfile;
     unsigned char buffer[bufsize];
     memset(buffer, 0, bufsize);
     unsigned char iv[nonce_length];
     amagus_random(&iv, nonce_length);
     unsigned char mac[mac_length];
-    unsigned char *mac_key[key_length];
+    unsigned char mac_key[key_length];
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
     unsigned char *K[key_length];
     manja_kdf(password, password_len, key, key_length, kdf_salt, salt_len, kdf_iterations);
+
     unsigned char *kwnonce[keywrap_ivlen];
     key_wrap_encrypt(keyprime, key_length, key, K, kwnonce);
     infile = fopen(inputfile, "rb");
@@ -287,27 +329,33 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     fwrite(iv, 1, nonce_length, outfile);
     fwrite(K, 1, key_length, outfile);
 
-    struct zander_state state;
+    struct zander3_state state;
     uint64_t xl;
     uint64_t xr;
+    uint64_t xp;
+    uint64_t xq;
+    int blocksize = 32;
     uint64_t blocks = datalen / bufsize;
     int extrabytes = blocksize - (datalen % blocksize);
     int extra = datalen % bufsize;
+    int v = blocksize;
     if (extra != 0) {
         blocks += 1;
+    }
+    if (datalen < bufsize) {
+        blocks = 1;
     }
     int c = 0;
     int b;
     uint64_t i;
-    zgen_subkeys(&state, keyprime, key_length, iv, nonce_length, z2rounds);
-    zgen_sbox(&state, keyprime, key_length);
+    z3gen_subkeys(&state, keyprime, key_length, iv, nonce_length);
     for (i = 0; i < blocks; i++) {
         if ((i == (blocks - 1)) && (extra != 0)) {
             bufsize = extra;
         }
         fread(&buffer, 1, bufsize, infile);
         c = 0;
-	if (i == (blocks - 1)) {
+	if ((i == (blocks - 1)) && (extra != 0)) {
             for (int p = 0; p < extrabytes; p++) {
                 buffer[(bufsize+extrabytes-1)-p] = (unsigned char *)extrabytes;
 	    }
@@ -321,17 +369,35 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
         if (bufsize < blocksize) {
             bblocks = 1;
         }
-	for (b = 0; b < bblocks; b++) {
+        for (b = 0; b < bblocks; b++) {
+            /*
+	    if ((i == (blocks - 1)) && (extra != 0) && (b == (bblocks -1))) {
+                for (int p = 0; p < extrabytes; p++) {
+                    buffer[(bufsize-1)-p] = (unsigned char *)extrabytes;
+	        }
+	    } */
+	/*    if ((i == (blocks - 1)) && (extra != 0)) {
+                for (int p = 0; p < extrabytes; p++) {
+                    buffer[(bufsize-1)-p] = (unsigned char *)extrabytes;
+	        }
+	    } */
+	 
             xl = ((uint64_t)buffer[c] << 56) + ((uint64_t)buffer[c+1] << 48) + ((uint64_t)buffer[c+2] << 40) + ((uint64_t)buffer[c+3] << 32) + ((uint64_t)buffer[c+4] << 24) + ((uint64_t)buffer[c+5] << 16) + ((uint64_t)buffer[c+6] << 8) + (uint64_t)buffer[c+7];
             xr = ((uint64_t)buffer[c+8] << 56) + ((uint64_t)buffer[c+9] << 48) + ((uint64_t)buffer[c+10] << 40) + ((uint64_t)buffer[c+11] << 32) + ((uint64_t)buffer[c+12] << 24) + ((uint64_t)buffer[c+13] << 16) + ((uint64_t)buffer[c+14] << 8) + (uint64_t)buffer[c+15];
+            xp = ((uint64_t)buffer[c+16] << 56) + ((uint64_t)buffer[c+17] << 48) + ((uint64_t)buffer[c+18] << 40) + ((uint64_t)buffer[c+19] << 32) + ((uint64_t)buffer[c+20] << 24) + ((uint64_t)buffer[c+21] << 16) + ((uint64_t)buffer[c+22] << 8) + (uint64_t)buffer[c+23];
+            xq = ((uint64_t)buffer[c+24] << 56) + ((uint64_t)buffer[c+25] << 48) + ((uint64_t)buffer[c+26] << 40) + ((uint64_t)buffer[c+27] << 32) + ((uint64_t)buffer[c+28] << 24) + ((uint64_t)buffer[c+29] << 16) + ((uint64_t)buffer[c+30] << 8) + (uint64_t)buffer[c+31];
        
 	    xl = xl ^ state.last[0];
 	    xr = xr ^ state.last[1];
+	    xp = xp ^ state.last[2];
+	    xq = xq ^ state.last[3];
 
-            zblock_encrypt(&state, &xl, &xr);
+            z3block_encrypt(&state, &xl, &xr, &xp, &xq);
 
 	    state.last[0] = xl;
 	    state.last[1] = xr;
+	    state.last[2] = xp;
+	    state.last[3] = xq;
         
             buffer[c] = (xl & 0xFF00000000000000) >> 56;
             buffer[c+1] = (xl & 0x00FF000000000000) >> 48;
@@ -349,7 +415,23 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
             buffer[c+13] = (xr & 0x0000000000FF0000) >> 16;
             buffer[c+14] = (xr & 0x000000000000FF00) >> 8;
             buffer[c+15] = (xr & 0x00000000000000FF);
-            c += 16;
+            buffer[c+16] = (xp & 0xFF00000000000000) >> 56;
+            buffer[c+17] = (xp & 0x00FF000000000000) >> 48;
+            buffer[c+18] = (xp & 0x0000FF0000000000) >> 40;
+            buffer[c+19] = (xp & 0x000000FF00000000) >> 32;
+            buffer[c+20] = (xp & 0x00000000FF000000) >> 24;
+            buffer[c+21] = (xp & 0x0000000000FF0000) >> 16;
+            buffer[c+22] = (xp & 0x000000000000FF00) >> 8;
+            buffer[c+23] = (xp & 0x00000000000000FF);
+            buffer[c+24] = (xq & 0xFF00000000000000) >> 56;
+            buffer[c+25] = (xq & 0x00FF000000000000) >> 48;
+            buffer[c+26] = (xq & 0x0000FF0000000000) >> 40;
+            buffer[c+27] = (xq & 0x000000FF00000000) >> 32;
+            buffer[c+28] = (xq & 0x00000000FF000000) >> 24;
+            buffer[c+29] = (xq & 0x0000000000FF0000) >> 16;
+            buffer[c+30] = (xq & 0x000000000000FF00) >> 8;
+            buffer[c+31] = (xq & 0x00000000000000FF);
+            c += 32;
         }
         fwrite(buffer, 1, bufsize, outfile);
     }
@@ -359,7 +441,7 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
+void * zander3_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
     struct qloq_ctx ctx;
     BIGNUM *tmp;
     BIGNUM *tmpS;
@@ -367,10 +449,9 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     tmp = BN_new();
     tmpS = BN_new();
     BNctxt = BN_new();
-    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &ctx);
+    load_skfile(keyfile1, &ctx);
     load_pkfile(keyfile2, &ctx);
 
-    int blocksize = 16;
     FILE *infile, *outfile;
     unsigned char buffer[bufsize];
     memset(buffer, 0, bufsize);
@@ -387,6 +468,8 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
     datalen = datalen - key_length - mac_length - nonce_length - keywrap_ivlen - mask_bytes - mask_bytes - mask_bytes;
+
+    int extrabytes = 32 - (datalen % 32);
     fseek(infile, 0, SEEK_SET);
     fread(&mac, 1, mac_length, infile);
     fread(passtmp, 1, mask_bytes, infile);
@@ -413,10 +496,14 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
     key_wrap_decrypt(keyprime, key_length, key, kwnonce);
 
-    struct zander_state state;
+    struct zander3_state state;
+    //int z3rounds = ((keylen / 4) + ((keylen / 8) + (48 - (keylen / 8))));
     int count = 0;
     uint64_t xl;
     uint64_t xr;
+    uint64_t xp;
+    uint64_t xq;
+    int blocksize = 32;
     uint64_t blocks = datalen / bufsize;
     int extra = datalen % bufsize;
     if (extra != 0) {
@@ -433,8 +520,7 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
         outfile = fopen(outputfile, "wb");
         infile = fopen(inputfile, "rb");
         fseek(infile, (mac_length + keywrap_ivlen + nonce_length + key_length + (mask_bytes*3)), SEEK_SET);
-        zgen_subkeys(&state, keyprime, key_length, iv, nonce_length, z2rounds);
-        zgen_sbox(&state, keyprime, key_length);
+        z3gen_subkeys(&state, keyprime, key_length, iv, nonce_length);
         for (i = 0; i < blocks; i++) {
             if (i == (blocks - 1) && (extra != 0)) {
                 bufsize = extra;
@@ -449,16 +535,24 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
             for (b = 0; b < bblocks; b++) {
                 xl = ((uint64_t)buffer[c] << 56) + ((uint64_t)buffer[c+1] << 48) + ((uint64_t)buffer[c+2] << 40) + ((uint64_t)buffer[c+3] << 32) + ((uint64_t)buffer[c+4] << 24) + ((uint64_t)buffer[c+5] << 16) + ((uint64_t)buffer[c+6] << 8) + (uint64_t)buffer[c+7];
                 xr = ((uint64_t)buffer[c+8] << 56) + ((uint64_t)buffer[c+9] << 48) + ((uint64_t)buffer[c+10] << 40) + ((uint64_t)buffer[c+11] << 32) + ((uint64_t)buffer[c+12] << 24) + ((uint64_t)buffer[c+13] << 16) + ((uint64_t)buffer[c+14] << 8) + (uint64_t)buffer[c+15];
+                xp = ((uint64_t)buffer[c+16] << 56) + ((uint64_t)buffer[c+17] << 48) + ((uint64_t)buffer[c+18] << 40) + ((uint64_t)buffer[c+19] << 32) + ((uint64_t)buffer[c+20] << 24) + ((uint64_t)buffer[c+21] << 16) + ((uint64_t)buffer[c+22] << 8) + (uint64_t)buffer[c+23];
+                xq = ((uint64_t)buffer[c+24] << 56) + ((uint64_t)buffer[c+25] << 48) + ((uint64_t)buffer[c+26] << 40) + ((uint64_t)buffer[c+27] << 32) + ((uint64_t)buffer[c+28] << 24) + ((uint64_t)buffer[c+29] << 16) + ((uint64_t)buffer[c+30] << 8) + (uint64_t)buffer[c+31];
         
 	        state.next[0] = xl;
 	        state.next[1] = xr;
+	        state.next[2] = xp;
+	        state.next[3] = xq;
 
-                zblock_decrypt(&state, &xl, &xr);
+                z3block_decrypt(&state, &xl, &xr, &xp, &xq);
         
 	        xl = xl ^ state.last[0];
 	        xr = xr ^ state.last[1];
+	        xp = xp ^ state.last[2];
+	        xq = xq ^ state.last[3];
 	        state.last[0] = state.next[0];
 	        state.last[1] = state.next[1];
+	        state.last[2] = state.next[2];
+	        state.last[3] = state.next[3];
         
                 buffer[c] = (xl & 0xFF00000000000000) >> 56;
                 buffer[c+1] = (xl & 0x00FF000000000000) >> 48;
@@ -476,7 +570,23 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
                 buffer[c+13] = (xr & 0x0000000000FF0000) >> 16;
                 buffer[c+14] = (xr & 0x000000000000FF00) >> 8;
                 buffer[c+15] = (xr & 0x00000000000000FF);
-                c += 16;
+                buffer[c+16] = (xp & 0xFF00000000000000) >> 56;
+                buffer[c+17] = (xp & 0x00FF000000000000) >> 48;
+                buffer[c+18] = (xp & 0x0000FF0000000000) >> 40;
+                buffer[c+19] = (xp & 0x000000FF00000000) >> 32;
+                buffer[c+20] = (xp & 0x00000000FF000000) >> 24;
+                buffer[c+21] = (xp & 0x0000000000FF0000) >> 16;
+                buffer[c+22] = (xp & 0x000000000000FF00) >> 8;
+                buffer[c+23] = (xp & 0x00000000000000FF);
+                buffer[c+24] = (xq & 0xFF00000000000000) >> 56;
+                buffer[c+25] = (xq & 0x00FF000000000000) >> 48;
+                buffer[c+26] = (xq & 0x0000FF0000000000) >> 40;
+                buffer[c+27] = (xq & 0x000000FF00000000) >> 32;
+                buffer[c+28] = (xq & 0x00000000FF000000) >> 24;
+                buffer[c+29] = (xq & 0x0000000000FF0000) >> 16;
+                buffer[c+30] = (xq & 0x000000000000FF00) >> 8;
+                buffer[c+31] = (xq & 0x00000000000000FF);
+                c += 32;
             }
 
 	    if (i == (blocks - 1)) {
@@ -496,9 +606,8 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
         }
         fclose(infile);
         fclose(outfile);
-    }
+    } 
     else {
         printf("Error: Message has been tampered with.\n");
     }
 }
-

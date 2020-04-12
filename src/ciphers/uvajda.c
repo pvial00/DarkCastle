@@ -65,11 +65,11 @@ void uvajda_keysetup(struct uvajda_state *state, unsigned char *key, unsigned ch
     }
 }
 
-void * uvajda_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
+void * uvajda_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
     struct qloq_ctx ctx;
     struct qloq_ctx Sctx;
     load_pkfile(keyfile1, &ctx);
-    load_skfile(keyfile2, &Sctx);
+    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &Sctx);
     unsigned char *password[password_len];
     amagus_random(password, password_len);
     BIGNUM *tmp;
@@ -164,7 +164,7 @@ void * uvajda_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *ou
     ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-void * uvajda_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize) {
+void * uvajda_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
     struct qloq_ctx ctx;
     BIGNUM *tmp;
     BIGNUM *tmpS;
@@ -172,7 +172,7 @@ void * uvajda_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *ou
     tmp = BN_new();
     tmpS = BN_new();
     BNctxt = BN_new();
-    load_skfile(keyfile1, &ctx);
+    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &ctx);
     load_pkfile(keyfile2, &ctx);
 
     FILE *infile, *outfile;

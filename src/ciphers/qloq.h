@@ -51,6 +51,36 @@ int verify(struct qloq_ctx * ctx, BIGNUM *ctxt, BIGNUM *ptxt) {
     }
 }
 
+void pkg_pk(struct qloq_ctx * ctx, char * prefix) {
+    char *pkfilename[256];
+    char *pknum[4];
+    char *nnum[3];
+    char *Mnum[3];
+    FILE *tmpfile;
+    strcpy(pkfilename, prefix);
+    strcat(pkfilename, ".pk");
+    int pkbytes = BN_num_bytes(ctx->pk);
+    int nbytes = BN_num_bytes(ctx->n);
+    int Mbytes = BN_num_bytes(ctx->M);
+    sprintf(pknum, "%d", pkbytes);
+    sprintf(nnum, "%d", nbytes);
+    sprintf(Mnum, "%d", Mbytes);
+    unsigned char *pk[pkbytes];
+    unsigned char *n[nbytes];
+    unsigned char *M[Mbytes];
+    BN_bn2bin(ctx->pk, pk);
+    BN_bn2bin(ctx->n, n);
+    BN_bn2bin(ctx->M, M);
+    tmpfile = fopen(pkfilename, "wb");
+    fwrite(pknum, 1, strlen(pknum), tmpfile);
+    fwrite(pk, 1, pkbytes, tmpfile);
+    fwrite(nnum, 1, strlen(nnum), tmpfile);
+    fwrite(n, 1, nbytes, tmpfile);
+    fwrite(Mnum, 1, strlen(Mnum), tmpfile);
+    fwrite(M, 1, Mbytes, tmpfile);
+    fclose(tmpfile);
+}
+
 void pkg_keys(struct qloq_ctx * ctx, char * prefix) {
     char *pkfilename[256];
     char *skfilename[256];
@@ -95,6 +125,65 @@ void pkg_keys(struct qloq_ctx * ctx, char * prefix) {
     fwrite(Mnum, 1, strlen(Mnum), tmpfile);
     fwrite(M, 1, Mbytes, tmpfile);
     fclose(tmpfile);
+}
+
+int pkg_sk_bytes_count(struct qloq_ctx * ctx) {
+    int keynum = 4;
+    int nnum = 3;
+    int Mnum = 3;
+    int skbytes = BN_num_bytes(ctx->sk);
+    int nbytes = BN_num_bytes(ctx->n);
+    int Mbytes = BN_num_bytes(ctx->M);
+    int total = (keynum + nnum + Mnum + skbytes + nbytes + Mbytes);
+    return total;
+}
+
+void pkg_sk_bytes(struct qloq_ctx * ctx, unsigned char * keyblob) {
+    char *sknum[4];
+    char *nnum[3];
+    char *Mnum[3];
+    int skbytes = BN_num_bytes(ctx->sk);
+    int nbytes = BN_num_bytes(ctx->n);
+    int Mbytes = BN_num_bytes(ctx->M);
+    sprintf(sknum, "%d", skbytes);
+    sprintf(nnum, "%d", nbytes);
+    sprintf(Mnum, "%d", Mbytes);
+    int tt = atoi(sknum);
+    unsigned char sk[skbytes];
+    unsigned char n[nbytes];
+    unsigned char M[Mbytes];
+    BN_bn2bin(ctx->sk, sk);
+    BN_bn2bin(ctx->n, n);
+    BN_bn2bin(ctx->M, M);
+    int pos = 0;
+    int i;
+    unsigned char *_sknum = (unsigned char *)sknum;
+    unsigned char *_nnum = (unsigned char *)nnum;
+    unsigned char *_Mnum = (unsigned char *)Mnum;
+    for (i = 0; i < 4; i++) {
+        keyblob[pos] = _sknum[i];
+        pos += 1;
+    }
+    for (i = 0; i < skbytes; i++) {
+        keyblob[pos] = sk[i];
+        pos += 1;
+    }
+    for (i = 0; i < 3; i++) {
+        keyblob[pos] = _nnum[i];
+        pos += 1;
+    }
+    for (i = 0; i < nbytes; i++) {
+        keyblob[pos] = n[i];
+        pos += 1;
+    }
+    for (i = 0; i < 3; i++) {
+        keyblob[pos] = _Mnum[i];
+        pos += 1;
+    }
+    for (i = 0; i < Mbytes; i++) {
+        keyblob[pos] = M[i];
+        pos += 1;
+    }
 }
 
 void load_pkfile(char *filename, struct qloq_ctx * ctx) {
@@ -171,8 +260,7 @@ void * mypad_decrypt(unsigned char * msg, unsigned char * X, int mask_bytes, uns
     }
 }
 
-int keygen(struct qloq_ctx * ctx, int psize) {
-    char *prefix = "QloQ";
+int keygen(struct qloq_ctx * ctx, int psize, char * prefix) {
     BN_CTX *bnctx = BN_CTX_new();
     int good = 0;
     int randstat = 0;
@@ -320,7 +408,7 @@ int keygen(struct qloq_ctx * ctx, int psize) {
             good = 1;
         }
     }
-    pkg_keys(ctx, prefix);
+    pkg_pk(ctx, prefix);
     BN_free(p);
     BN_free(q);
     BN_free(a);
