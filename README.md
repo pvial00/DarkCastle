@@ -8,9 +8,6 @@ DarkCastle is an authenticated file encryption program aiming to provide a large
 
 DarkCastle allows for general file encryption or file exchange between two people using Q'loQ public keys.
 
-DarkCastle is accepting ciphers.  Email pvial00@gmail.com or open a github issue to submit/integrate a cipher, hash function, KDF or authentication method.
-
-
 *** Works on Linux, MacOS
 
 # Algorithms and authenticators
