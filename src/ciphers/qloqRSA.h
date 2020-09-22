@@ -148,9 +148,6 @@ void pkg_sk_bytes(struct qloq_ctx * ctx, unsigned char * keyblob) {
     sprintf(sknum, "%d", skbytes);
     sprintf(nnum, "%d", nbytes);
     sprintf(Mnum, "%d", Mbytes);
-    printf("%d", skbytes);
-    printf("%d", nbytes);
-    printf("%d", Mbytes);
     int tt = atoi(sknum);
     unsigned char sk[skbytes];
     unsigned char n[nbytes];
