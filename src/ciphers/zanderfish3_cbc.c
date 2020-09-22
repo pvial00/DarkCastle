@@ -780,9 +780,9 @@ void * zander3_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
 }
 
 void * zander3_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
-    int pkctxt_len = 384;
-    int Sctxt_len = 384;
-    int Yctxt_len = 384;
+    int pkctxt_len = 768;
+    int Sctxt_len = 768;
+    int Yctxt_len = 768;
     struct qloq_ctx ctx;
     BIGNUM *tmp;
     BIGNUM *tmpS;

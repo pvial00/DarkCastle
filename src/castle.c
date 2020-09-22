@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
-#include "ciphers/qloq.h"
+#include "ciphers/qloqRSA.h"
 #include "ciphers/uvajda_oneshot.c"
 #include "ciphers/amagus_oneshot.c"
 #include "crypto_funcs.c"
@@ -22,18 +22,18 @@
 #include "ciphers/qapla.c"
 
 void usage() {
-    printf("DarkCastle v0.9 - by KryptoMagik\n\n");
+    printf("DarkCastle v1.0 - by KryptoMagik\n\n");
     printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n");
 }
 
 int main(int argc, char *argv[]) {
-    unsigned char kdf_salt[] = "KryptoMagikDCv09";
+    unsigned char kdf_salt[] = "KryptoMagikDCv10";
     int salt_len = 16;
     int kdf_iterations = 100000;
     int password_len = 256;
-    int mask_bytes = 384;
+    int mask_bytes = 768;
 
     char *encrypt_symbol = "-e";
     char *decrypt_symbol = "-d";

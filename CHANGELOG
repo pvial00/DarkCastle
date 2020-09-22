@@ -1,3 +1,5 @@
+v1.0 - Migration to Q'loQ-RSA, a multi prime, multi modulus implementation of RSA
+
 v0.9 - Encrypted secret key file + passphrase security
 
 v0.8 - Critical Q'loQ security fix

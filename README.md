@@ -19,10 +19,6 @@ All ciphers, with the exception of Specjal and Zywca which are still undergoing 
 
 Fastest cipher is Uvajda
 
-Q'loQ Public key algorithm uses 3072 bit keys
-
-https://github.com/pvial00/QloQ
-
 Uvajda 256 bit authenticated with Ganja 256 bit - 128 bit nonce length
 
 https://github.com/pvial00/Uvajda
