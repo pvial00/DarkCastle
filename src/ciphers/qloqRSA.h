@@ -60,11 +60,8 @@ void pkg_pk(struct qloq_ctx * ctx, char * prefix) {
     strcpy(pkfilename, prefix);
     strcat(pkfilename, ".pk");
     int pkbytes = BN_num_bytes(ctx->pk);
-    printf("%d", pkbytes); 
     int nbytes = BN_num_bytes(ctx->n);
-    printf("%d", nbytes); 
     int Mbytes = BN_num_bytes(ctx->M);
-    printf("%d", Mbytes); 
     sprintf(pknum, "%d", pkbytes);
     sprintf(nnum, "%d", nbytes);
     sprintf(Mnum, "%d", Mbytes);
