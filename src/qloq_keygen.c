@@ -19,10 +19,10 @@ int main(int argc, char *argv[]) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &tp);
     int kdf_iterations = 100000;
     unsigned char kdf_salt[] = "KryptoMagikDCv09";
-    int psize = 1536;
+    int psize = 3072;
     char * prefix = "QloQ";
     if (argc < 2) {
-        psize = 1536;
+        psize = 3072;
     }
     else {
         psize = atoi(argv[1]);
