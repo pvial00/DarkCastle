@@ -311,7 +311,6 @@ int keygen(struct qloq_ctx * ctx, int psize, char * prefix) {
     /* Set Z1 to equal 1 */
     BN_one(z1);
     while (good != 1) {
-        printf("%d", good);
         /* Generate primes, let them not be equal */
         while (randstat != 1) {
             unsigned char *seed[524288];
