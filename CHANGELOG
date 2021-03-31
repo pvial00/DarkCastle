@@ -1,3 +1,5 @@
+v1.1 - Spock key scheduler rewrite
+
 v1.0 - Migration to Q'loQ-RSA, a multi prime, multi modulus implementation of RSA
 
 v0.9 - Encrypted secret key file + passphrase security
