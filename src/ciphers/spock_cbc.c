@@ -106,7 +106,7 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[1] = spock_rotr(k[1], 7);
         k[1] += k[2];
         k[1] ^= k[0];
-        k[2] = spock_rotr(k[3], 2);
+        k[2] = spock_rotr(k[2], 2);
         k[2] ^= k[1];
         k[3] = spock_rotl(k[3], 3);
         k[3] ^= k[5];
@@ -118,9 +118,9 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[5] = spock_rotr(k[5], 7);
         k[5] += k[0];
         k[5] ^= k[6];
-        k[6] = spock_rotr(k[3], 2);
+        k[6] = spock_rotr(k[6], 2);
         k[6] ^= k[2];
-        k[7] = spock_rotl(k[3], 3);
+        k[7] = spock_rotl(k[7], 3);
         k[7] ^= k[4];
         k[7] += k[5];
         for (i = 0; i < 8; i++) {
@@ -134,7 +134,7 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[1] = spock_rotr(k[1], 7);
         k[1] += k[2];
         k[1] ^= k[0];
-        k[2] = spock_rotr(k[3], 2);
+        k[2] = spock_rotr(k[2], 2);
         k[2] ^= k[1];
         k[3] = spock_rotl(k[3], 3);
         k[3] ^= k[5];
@@ -146,9 +146,9 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[5] = spock_rotr(k[5], 7);
         k[5] += k[0];
         k[5] ^= k[6];
-        k[6] = spock_rotr(k[3], 2);
+        k[6] = spock_rotr(k[6], 2);
         k[6] ^= k[2];
-        k[7] = spock_rotl(k[3], 3);
+        k[7] = spock_rotl(k[7], 3);
         k[7] ^= k[4];
         k[7] += k[5];
         for (i = 0; i < 8; i++) {
@@ -163,7 +163,7 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
             k[1] = spock_rotr(k[1], 7);
             k[1] += k[2];
             k[1] ^= k[0];
-            k[2] = spock_rotr(k[3], 2);
+            k[2] = spock_rotr(k[2], 2);
             k[2] ^= k[1];
             k[3] = spock_rotl(k[3], 3);
             k[3] ^= k[5];
@@ -175,9 +175,9 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
             k[5] = spock_rotr(k[5], 7);
             k[5] += k[0];
             k[5] ^= k[6];
-            k[6] = spock_rotr(k[3], 2);
+            k[6] = spock_rotr(k[6], 2);
             k[6] ^= k[2];
-            k[7] = spock_rotl(k[3], 3);
+            k[7] = spock_rotl(k[7], 3);
             k[7] ^= k[4];
             k[7] += k[5];
             for (x = 0; x < 8; x++) {
@@ -192,7 +192,7 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[1] = spock_rotr(k[1], 7);
         k[1] += k[2];
         k[1] ^= k[0];
-        k[2] = spock_rotr(k[3], 2);
+        k[2] = spock_rotr(k[2], 2);
         k[2] ^= k[1];
         k[3] = spock_rotl(k[3], 3);
         k[3] ^= k[5];
@@ -204,9 +204,9 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[5] = spock_rotr(k[5], 7);
         k[5] += k[0];
         k[5] ^= k[6];
-        k[6] = spock_rotr(k[3], 2);
+        k[6] = spock_rotr(k[6], 2);
         k[6] ^= k[2];
-        k[7] = spock_rotl(k[3], 3);
+        k[7] = spock_rotl(k[7], 3);
         k[7] ^= k[4];
         k[7] += k[5];
         for (i = 0; i < 8; i++) {
@@ -218,7 +218,7 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[1] = spock_rotr(k[1], 7);
         k[1] += k[2];
         k[1] ^= k[0];
-        k[2] = spock_rotr(k[3], 2);
+        k[2] = spock_rotr(k[2], 2);
         k[2] ^= k[1];
         k[3] = spock_rotl(k[3], 3);
         k[3] ^= k[5];
@@ -230,9 +230,9 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
         k[5] = spock_rotr(k[5], 7);
         k[5] += k[0];
         k[5] ^= k[6];
-        k[6] = spock_rotr(k[3], 2);
+        k[6] = spock_rotr(k[6], 2);
         k[6] ^= k[2];
-        k[7] = spock_rotl(k[3], 3);
+        k[7] = spock_rotl(k[7], 3);
         k[7] ^= k[4];
         k[7] += k[5];
         for (i = 0; i < 8; i++) {
@@ -247,7 +247,7 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
             k[1] = spock_rotr(k[1], 7);
             k[1] += k[2];
             k[1] ^= k[0];
-            k[2] = spock_rotr(k[3], 2);
+            k[2] = spock_rotr(k[2], 2);
             k[2] ^= k[1];
             k[3] = spock_rotl(k[3], 3);
             k[3] ^= k[5];
@@ -259,9 +259,9 @@ void spock_ksa(struct spock_state *state, unsigned char * keyp, int keylen) {
             k[5] = spock_rotr(k[5], 7);
             k[5] += k[0];
             k[5] ^= k[6];
-            k[6] = spock_rotr(k[3], 2);
+            k[6] = spock_rotr(k[6], 2);
             k[6] ^= k[2];
-            k[7] = spock_rotl(k[3], 3);
+            k[7] = spock_rotl(k[7], 3);
             k[7] ^= k[4];
             k[7] += k[5];
             for (x = 0; x < 8; x++) {
