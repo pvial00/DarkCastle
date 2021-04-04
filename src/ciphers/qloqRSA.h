@@ -31,19 +31,19 @@ void sign(struct qloq_ctx * ctx, BIGNUM *S, BIGNUM *ptxt) {
     BN_CTX *bnctx = BN_CTX_new();
     BIGNUM *phase1;
     phase1 = BN_new();
-    BN_mod_exp(phase1, ptxt, ctx->sk, ctx->M, bnctx);
-    BN_mod_exp(S, phase1, ctx->sk, ctx->n, bnctx);
+    BN_mod_exp(phase1, ptxt, ctx->sk, ctx->n, bnctx);
+    BN_mod_exp(S, phase1, ctx->sk, ctx->M, bnctx);
 }
 
-int verify(struct qloq_ctx * ctx, BIGNUM *ctxt, BIGNUM *ptxt) {
+int verify(struct qloq_ctx * ctx, BIGNUM *V, BIGNUM *S) {
     BN_CTX *bnctx = BN_CTX_new();
     BIGNUM *phase1;
     BIGNUM *phase2;
     phase1 = BN_new();
     phase2 = BN_new();
-    BN_mod_exp(phase1, ptxt, ctx->pk, ctx->M, bnctx);
+    BN_mod_exp(phase1, S, ctx->pk, ctx->M, bnctx);
     BN_mod_exp(phase2, phase1, ctx->pk, ctx->n, bnctx);
-    if (BN_cmp(phase2, ctxt) == 0) {
+    if (BN_cmp(phase2, V) == 0) {
         return 0;
     }
     else {
@@ -51,26 +51,41 @@ int verify(struct qloq_ctx * ctx, BIGNUM *ctxt, BIGNUM *ptxt) {
     }
 }
 
-void pkg_pk(struct qloq_ctx * ctx, char * prefix) {
+void pkg_pk(struct qloq_ctx * ctx, struct qloq_ctx * sign_ctx, char * prefix) {
+    FILE *tmpfile;
     char *pkfilename[256];
+    strcpy(pkfilename, prefix);
+    strcat(pkfilename, ".pk");
     char *pknum[4];
     char *nnum[3];
     char *Mnum[3];
-    FILE *tmpfile;
-    strcpy(pkfilename, prefix);
-    strcat(pkfilename, ".pk");
+    char *Spknum[4];
+    char *Snnum[3];
+    char *SMnum[3];
     int pkbytes = BN_num_bytes(ctx->pk);
     int nbytes = BN_num_bytes(ctx->n);
     int Mbytes = BN_num_bytes(ctx->M);
+    int Spkbytes = BN_num_bytes(sign_ctx->pk);
+    int Snbytes = BN_num_bytes(sign_ctx->n);
+    int SMbytes = BN_num_bytes(sign_ctx->M);
     sprintf(pknum, "%d", pkbytes);
     sprintf(nnum, "%d", nbytes);
     sprintf(Mnum, "%d", Mbytes);
+    sprintf(Spknum, "%d", Spkbytes);
+    sprintf(Snnum, "%d", Snbytes);
+    sprintf(SMnum, "%d", SMbytes);
     unsigned char *pk[pkbytes];
     unsigned char *n[nbytes];
     unsigned char *M[Mbytes];
+    unsigned char *Spk[Spkbytes];
+    unsigned char *Sn[Snbytes];
+    unsigned char *SM[SMbytes];
     BN_bn2bin(ctx->pk, pk);
     BN_bn2bin(ctx->n, n);
     BN_bn2bin(ctx->M, M);
+    BN_bn2bin(sign_ctx->pk, Spk);
+    BN_bn2bin(sign_ctx->n, Sn);
+    BN_bn2bin(sign_ctx->M, SM);
     tmpfile = fopen(pkfilename, "wb");
     fwrite(pknum, 1, strlen(pknum), tmpfile);
     fwrite(pk, 1, pkbytes, tmpfile);
@@ -78,6 +93,14 @@ void pkg_pk(struct qloq_ctx * ctx, char * prefix) {
     fwrite(n, 1, nbytes, tmpfile);
     fwrite(Mnum, 1, strlen(Mnum), tmpfile);
     fwrite(M, 1, Mbytes, tmpfile);
+
+    fwrite(Spknum, 1, strlen(Spknum), tmpfile);
+    fwrite(Spk, 1, Spkbytes, tmpfile);
+    fwrite(Snnum, 1, strlen(Snnum), tmpfile);
+    fwrite(Sn, 1, Snbytes, tmpfile);
+    fwrite(SMnum, 1, strlen(SMnum), tmpfile);
+    fwrite(SM, 1, SMbytes, tmpfile);
+
     fclose(tmpfile);
 }
 
@@ -127,39 +150,62 @@ void pkg_keys(struct qloq_ctx * ctx, char * prefix) {
     fclose(tmpfile);
 }
 
-int pkg_sk_bytes_count(struct qloq_ctx * ctx) {
+int pkg_sk_bytes_count(struct qloq_ctx * ctx, struct qloq_ctx * sign_ctx) {
     int keynum = 4;
     int nnum = 3;
     int Mnum = 3;
     int skbytes = BN_num_bytes(ctx->sk);
     int nbytes = BN_num_bytes(ctx->n);
     int Mbytes = BN_num_bytes(ctx->M);
+    int Sskbytes = BN_num_bytes(sign_ctx->sk);
+    int Snbytes = BN_num_bytes(sign_ctx->n);
+    int SMbytes = BN_num_bytes(sign_ctx->M);
     int total = (keynum + nnum + Mnum + skbytes + nbytes + Mbytes);
+    total += (keynum + nnum + Mnum + Sskbytes + Snbytes + SMbytes);
     return total;
 }
 
-void pkg_sk_bytes(struct qloq_ctx * ctx, unsigned char * keyblob) {
+void pkg_sk_bytes(struct qloq_ctx * ctx, struct qloq_ctx * sign_ctx, unsigned char * keyblob) {
     char *sknum[4];
     char *nnum[3];
     char *Mnum[3];
+    char *Ssknum[4];
+    char *Snnum[3];
+    char *SMnum[3];
     int skbytes = BN_num_bytes(ctx->sk);
     int nbytes = BN_num_bytes(ctx->n);
     int Mbytes = BN_num_bytes(ctx->M);
+    int Sskbytes = BN_num_bytes(sign_ctx->sk);
+    int Snbytes = BN_num_bytes(sign_ctx->n);
+    int SMbytes = BN_num_bytes(sign_ctx->M);
     sprintf(sknum, "%d", skbytes);
     sprintf(nnum, "%d", nbytes);
     sprintf(Mnum, "%d", Mbytes);
+    sprintf(Ssknum, "%d", Sskbytes);
+    sprintf(Snnum, "%d", Snbytes);
+    sprintf(SMnum, "%d", SMbytes);
     int tt = atoi(sknum);
+    int Stt = atoi(Ssknum);
     unsigned char sk[skbytes];
     unsigned char n[nbytes];
     unsigned char M[Mbytes];
+    unsigned char Ssk[Sskbytes];
+    unsigned char Sn[Snbytes];
+    unsigned char SM[SMbytes];
     BN_bn2bin(ctx->sk, sk);
     BN_bn2bin(ctx->n, n);
     BN_bn2bin(ctx->M, M);
+    BN_bn2bin(sign_ctx->sk, Ssk);
+    BN_bn2bin(sign_ctx->n, Sn);
+    BN_bn2bin(sign_ctx->M, SM);
     int pos = 0;
     int i;
     unsigned char *_sknum = (unsigned char *)sknum;
     unsigned char *_nnum = (unsigned char *)nnum;
     unsigned char *_Mnum = (unsigned char *)Mnum;
+    unsigned char *_Ssknum = (unsigned char *)Ssknum;
+    unsigned char *_Snnum = (unsigned char *)Snnum;
+    unsigned char *_SMnum = (unsigned char *)SMnum;
     for (i = 0; i < 4; i++) {
         keyblob[pos] = _sknum[i];
         pos += 1;
@@ -184,18 +230,49 @@ void pkg_sk_bytes(struct qloq_ctx * ctx, unsigned char * keyblob) {
         keyblob[pos] = M[i];
         pos += 1;
     }
+
+    for (i = 0; i < 4; i++) {
+        keyblob[pos] = _Ssknum[i];
+        pos += 1;
+    }
+    for (i = 0; i < Sskbytes; i++) {
+        keyblob[pos] = Ssk[i];
+        pos += 1;
+    }
+    for (i = 0; i < 3; i++) {
+        keyblob[pos] = _Snnum[i];
+        pos += 1;
+    }
+    for (i = 0; i < Snbytes; i++) {
+        keyblob[pos] = Sn[i];
+        pos += 1;
+    }
+    for (i = 0; i < 3; i++) {
+        keyblob[pos] = _SMnum[i];
+        pos += 1;
+    }
+    for (i = 0; i < SMbytes; i++) {
+        keyblob[pos] = SM[i];
+        pos += 1;
+    }
 }
 
-void load_pkfile(char *filename, struct qloq_ctx * ctx) {
+void load_pkfile(char *filename, struct qloq_ctx * ctx, struct qloq_ctx * sign_ctx) {
     ctx->pk = BN_new();
     ctx->n = BN_new();
     ctx->M = BN_new();
+    sign_ctx->pk = BN_new();
+    sign_ctx->n = BN_new();
+    sign_ctx->M = BN_new();
     int pksize = 4;
     int nsize = 3;
     int Msize = 3;
     unsigned char *pknum[pksize];
     unsigned char *nnum[nsize];
-    unsigned char *Mnum[nsize];
+    unsigned char *Mnum[Msize];
+    unsigned char *Spknum[pksize];
+    unsigned char *Snnum[nsize];
+    unsigned char *SMnum[Msize];
     FILE *keyfile;
     keyfile = fopen(filename, "rb");
     fread(&pknum, 1, pksize, keyfile);
@@ -210,22 +287,44 @@ void load_pkfile(char *filename, struct qloq_ctx * ctx) {
     int Mn = atoi(Mnum);
     unsigned char M[Mn];
     fread(&M, 1, Mn, keyfile);
-    fclose(keyfile);
     BN_bin2bn(pk, pkn, ctx->pk);
     BN_bin2bn(n, nn, ctx->n);
     BN_bin2bn(M, Mn, ctx->M);
+
+    fread(&Spknum, 1, pksize, keyfile);
+    int Spkn = atoi(Spknum);
+    unsigned char Spk[Spkn];
+    fread(&Spk, 1, Spkn, keyfile);
+    fread(Snnum, 1, nsize, keyfile);
+    int Snn = atoi(Snnum);
+    unsigned char Sn[Snn];
+    fread(&Sn, 1, Snn, keyfile);
+    fread(SMnum, 1, Msize, keyfile);
+    int SMn = atoi(SMnum);
+    unsigned char SM[SMn];
+    fread(&SM, 1, SMn, keyfile);
+    fclose(keyfile);
+    BN_bin2bn(Spk, Spkn, sign_ctx->pk);
+    BN_bin2bn(Sn, Snn, sign_ctx->n);
+    BN_bin2bn(SM, SMn, sign_ctx->M);
 }
 
-void load_skfile(char *filename, struct qloq_ctx * ctx) {
+void load_skfile(char *filename, struct qloq_ctx * ctx, struct qloq_ctx * sign_ctx) {
     ctx->sk = BN_new();
     ctx->n = BN_new();
     ctx->M = BN_new();
+    sign_ctx->sk = BN_new();
+    sign_ctx->n = BN_new();
+    sign_ctx->M = BN_new();
     int sksize = 4;
     int nsize = 3;
     int Msize = 3;
     unsigned char *sknum[sksize];
     unsigned char *nnum[nsize];
     unsigned char *Mnum[nsize];
+    unsigned char *Ssknum[sksize];
+    unsigned char *Snnum[nsize];
+    unsigned char *SMnum[nsize];
     FILE *keyfile;
     keyfile = fopen(filename, "rb");
     fread(&sknum, 1, sksize, keyfile);
@@ -240,10 +339,26 @@ void load_skfile(char *filename, struct qloq_ctx * ctx) {
     int Mn = atoi(Mnum);
     unsigned char M[Mn];
     fread(&M, 1, Mn, keyfile);
-    fclose(keyfile);
     BN_bin2bn(sk, skn, ctx->sk);
     BN_bin2bn(n, nn, ctx->n);
     BN_bin2bn(M, Mn, ctx->M);
+
+    fread(&Ssknum, 1, sksize, keyfile);
+    int Sskn = atoi(Ssknum);
+    unsigned char Ssk[skn];
+    fread(&Ssk, 1, Sskn, keyfile);
+    fread(Snnum, 1, nsize, keyfile);
+    int Snn = atoi(Snnum);
+    unsigned char Sn[Snn];
+    fread(&Sn, 1, Snn, keyfile);
+    fread(SMnum, 1, Msize, keyfile);
+    int SMn = atoi(SMnum);
+    unsigned char SM[SMn];
+    fread(&SM, 1, SMn, keyfile);
+    fclose(keyfile);
+    BN_bin2bn(Ssk, Sskn, sign_ctx->sk);
+    BN_bin2bn(Sn, Snn, sign_ctx->n);
+    BN_bin2bn(SM, SMn, sign_ctx->M);
 }
 
 void * mypad_encrypt(unsigned char * msg, int msglen, unsigned char * X, int mask_bytes, unsigned char *nonce) {
@@ -381,7 +496,6 @@ int keygen(struct qloq_ctx * ctx, int psize, char * prefix) {
             good = 1;
         }
     }
-    pkg_pk(ctx, prefix);
     BN_free(p);
     BN_free(q);
     BN_free(a);

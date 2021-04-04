@@ -1,3 +1,5 @@
+v1.2 - Implementation of Q'loQ-RSA signing keys, Signing and Verification correction
+
 v1.1 - Spock key scheduler rewrite
 
 v1.0 - Migration to Q'loQ-RSA, a multi prime, multi modulus implementation of RSA

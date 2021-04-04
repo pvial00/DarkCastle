@@ -64,9 +64,10 @@ void dark_keysetup(struct dark_state *state, unsigned char *key, unsigned char *
 
 void * dark_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
     struct qloq_ctx ctx;
-    struct qloq_ctx Sctx;
-    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &Sctx);
-    load_pkfile(keyfile1, &ctx);
+    struct qloq_ctx sign_ctx;
+    struct qloq_ctx dummy_ctx;
+    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &dummy_ctx, &sign_ctx);
+    load_pkfile(keyfile1, &ctx, &dummy_ctx);
     unsigned char *password[password_len];
     amagus_random(password, password_len);
     BIGNUM *tmp;
@@ -81,7 +82,7 @@ void * dark_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outp
     mypad_encrypt(password, password_len, X, mask_bytes, Y);
     BN_bin2bn(X, mask_bytes, tmp);
     cloak(&ctx, BNctxt, tmp);
-    sign(&Sctx, S, BNctxt);
+    sign(&sign_ctx, S, BNctxt);
     int ctxtbytes = BN_num_bytes(BNctxt);
     unsigned char *password_ctxt[ctxtbytes];
     BN_bn2bin(BNctxt, password_ctxt);
@@ -154,14 +155,16 @@ void * dark_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outp
 
 void * dark_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
     struct qloq_ctx ctx;
+    struct qloq_ctx dummy_ctx;
+    struct qloq_ctx sign_ctx;
     BIGNUM *tmp;
     BIGNUM *tmpS;
     BIGNUM *BNctxt;
     tmp = BN_new();
     tmpS = BN_new();
     BNctxt = BN_new();
-    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &ctx);
-    load_pkfile(keyfile2, &ctx);
+    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &ctx, &dummy_ctx);
+    load_pkfile(keyfile2, &dummy_ctx, &sign_ctx);
 
     FILE *infile, *outfile;
     unsigned char buffer[bufsize];
@@ -197,7 +200,7 @@ void * dark_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outp
     mypad_decrypt(passtmp, password, ctxtbytes, Ytmp);
     memcpy(passkey, passtmp, password_len);
     BN_bin2bn(signtmp, mask_bytes, tmpS);
-    if (verify(&ctx, tmp, BNctxt) != 0) {
+    if (verify(&sign_ctx, tmp, tmpS) != 0) {
         printf("Error: Signature verification failed. Message is not authentic.\n");
         exit(2);
     }

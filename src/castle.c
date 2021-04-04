@@ -22,7 +22,7 @@
 #include "ciphers/qapla.c"
 
 void usage() {
-    printf("DarkCastle v1.1 - by KryptoMagick\n\n");
+    printf("DarkCastle v1.2 - by KryptoMagick\n\n");
     printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish2-ctr  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n");
@@ -223,5 +223,6 @@ int main(int argc, char *argv[]) {
             qapla_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, qapla_key_length, qapla_nonce_length, qapla_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, keywrap256_ivlen, mask_bytes, qapla_bufsize, passphrase);
         }
     }
+    printf("\n");
     return 0;
 }
