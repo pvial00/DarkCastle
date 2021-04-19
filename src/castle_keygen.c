@@ -19,6 +19,10 @@ int main(int argc, char *argv[]) {
     int kdf_iterations = 100000;
     unsigned char kdf_salt[] = "KryptoMagikDCv13";
     char * prefix;
+    if (sodium_init() == -1) {
+        printf("Error: Libsodium is not functioning\n");
+        return 1;
+    }
     if (argc == 2) {
         prefix = argv[1];
     }
