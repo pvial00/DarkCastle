@@ -2,19 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-/*
-uint32_t conv8to32(unsigned char buf[]) {
-    int i;
-    uint32_t output;
 
-    output = (buf[0] << 24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];
-    return output;
-}
-
-uint32_t rotl(uint32_t v, int c) {
-    return ((v << c) | (v >> (32 - c)));
-}
-*/
 void * ganja_hmac(char *inputfile, char *tmpprefix, unsigned char * key, int keylen) {
     int rounds = 8 * 8;
     int bufsize = 131072;
@@ -64,21 +52,12 @@ void * ganja_hmac(char *inputfile, char *tmpprefix, unsigned char * key, int key
         s += 4;
     }
         
-    /*
-    for (i = 0; i < (datalen / 4); i++) {
-        H[i] ^= (data[s] << 24) + (data[s+1] << 16) + (data[s+2] << 8) + data[s+3];
-        H[i] = (H[i] + m + W[i]) & 0xFFFFFFFF;
-        s += 4;
-    } */
     s = 0;
     for (i = 0; i < blocks; i++) {
         fread(&buffer, 1, bufsize, infile);
         if ((i == (blocks -1)) && (blocks_extra != 0)) {
-        //if ((i == (blocks -1)) && (blocks_extra != 0) && (datalen > bufsize)) {
-        //if ((i == (blocks -1)) && (datalen > bufsize)) {
             bufsize = blocks_extra;
         }
-        //fread(&buffer, 1, bufsize, infile);
         for (r = 0; r < bufsize; r++) {
             H[s] ^= buffer[r];
             H[s] = ((H[s] + m + buffer[r]) & 0xFFFFFFFF) ^ W[s];
@@ -146,7 +125,7 @@ void * ganja_hmac(char *inputfile, char *tmpprefix, unsigned char * key, int key
     }
     if (datalen < bufsize) {
         blocks = 1;
-        extra = datalen;
+        extra = 0;
         bufsize = datalen;
     }
     for (i = 0; i < blocks; i++)  {
@@ -191,10 +170,6 @@ int * ganja_hmac_verify(char *inputfile, unsigned char * key, int keylen) {
     int b, f, s, r, blocks;
     unsigned long long i;
     int c = 0;
-    /* int blocks = 0; 
-    blocks = datalen / 4;
-    int blocks_extra = datalen % 4;
-    int blocksize = 32; */
     m = 0x00000001;
 
     unsigned long long datalen;
@@ -226,21 +201,11 @@ int * ganja_hmac_verify(char *inputfile, unsigned char * key, int keylen) {
     }
         
     s = 0;
-    /*
-    for (i = 0; i < (datalen / 4); i++) {
-        H[i] ^= (data[s] << 24) + (data[s+1] << 16) + (data[s+2] << 8) + data[s+3];
-        H[i] = (H[i] + m + W[i]) & 0xFFFFFFFF;
-        s += 4;
-    } */
     for (i = 0; i < blocks; i++) {
         fread(&buffer, 1, bufsize, infile);
-        //if ((i == (blocks -1)) && (blocks_extra != 0)) {
         if ((i == (blocks -1)) && (datalen > bufsize)) {
-        //if ((i == (blocks -1)) && (blocks_extra != 0) && (datalen > bufsize)) {
-            //bufsize = blocks_extra;
             bufsize = blocks_extra;
         }
-        //fread(&buffer, 1, bufsize, infile);
         for (r = 0; r < bufsize; r++) {
             H[s] ^= buffer[r];
             H[s] = ((H[s] + m + buffer[r]) & 0xFFFFFFFF) ^ W[s];

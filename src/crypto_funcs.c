@@ -58,3 +58,11 @@ void * key_wrap_decrypt(unsigned char * keyprime, int key_length, unsigned char 
         uvajda1_crypt(keyprime, key, nonce, key_length);
     }
 }
+
+void load_pkfile(char *filename, unsigned char *pk, unsigned long long pklen, unsigned char *Spk, unsigned long long Spklen) {
+    FILE *keyfile;
+    keyfile = fopen(filename, "rb");
+    fread(pk, 1, pklen, keyfile);
+    fread(Spk, 1, Spklen, keyfile);
+    fclose(keyfile);
+}

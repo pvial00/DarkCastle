@@ -234,33 +234,15 @@ uint64_t zblock_decrypt(struct zander_state * state, uint64_t *xl, uint64_t *xr)
     *xr = Xr;
 }
 
-void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len,  int password_len,  int keywrap_ivlen, int mask_bytes,  int bufsize, unsigned char * passphrase) {
-    struct qloq_ctx ctx;
-    struct qloq_ctx dummy_ctx;
-    struct qloq_ctx sign_ctx;
-    load_pkfile(keyfile1, &ctx, &dummy_ctx);
-    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &dummy_ctx, &sign_ctx);
-    unsigned char *password[password_len];
-    amagus_random(password, password_len);
-    BIGNUM *tmp;
-    BIGNUM *BNctxt;
-    BIGNUM *S;
-    tmp = BN_new();
-    BNctxt = BN_new();
-    S = BN_new();
-    unsigned char *X[mask_bytes];
-    unsigned char *Y[mask_bytes];
-    amagus_random(Y, mask_bytes);
-    mypad_encrypt(password, password_len, X, mask_bytes, Y);
-    BN_bin2bn(X, mask_bytes, tmp);
-    cloak(&ctx, BNctxt, tmp);
-    sign(&sign_ctx, S, BNctxt);
-    int ctxtbytes = BN_num_bytes(BNctxt);
-    unsigned char *password_ctxt[ctxtbytes];
-    BN_bn2bin(BNctxt, password_ctxt);
-    int Sbytes = BN_num_bytes(S);
-    unsigned char *sign_ctxt[Sbytes];
-    BN_bn2bin(S, sign_ctxt);
+void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len,  int password_len,  int bufsize, unsigned char * passphrase) {
+    unsigned char pk[crypto_box_PUBLICKEYBYTES];
+    unsigned char sk[crypto_box_SECRETKEYBYTES];
+    unsigned char Spk[crypto_sign_PUBLICKEYBYTES];
+    unsigned char Ssk[crypto_sign_SECRETKEYBYTES];
+    unsigned char SpkB[crypto_sign_PUBLICKEYBYTES];
+    unsigned char pkB[crypto_box_PUBLICKEYBYTES];
+    load_pkfile(keyfile1, pkB, crypto_box_PUBLICKEYBYTES, SpkB, crypto_sign_PUBLICKEYBYTES);
+    zander3_cbc_decrypt_kf(keyfile2, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, pk, crypto_box_PUBLICKEYBYTES, sk, crypto_box_SECRETKEYBYTES, Spk, crypto_sign_PUBLICKEYBYTES, Ssk, crypto_sign_SECRETKEYBYTES);
 
     int blocksize = 16;
     FILE *infile, *outfile;
@@ -268,52 +250,55 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     memset(buffer, 0, bufsize);
     unsigned char iv[nonce_length];
     amagus_random(&iv, nonce_length);
-    unsigned char mac[mac_length];
-    unsigned char *mac_key[key_length];
+    unsigned char mac_key[key_length];
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
     unsigned char *K[key_length];
-    manja_kdf(password, password_len, key, key_length, kdf_salt, salt_len, kdf_iterations);
-    unsigned char *kwnonce[keywrap_ivlen];
-    key_wrap_encrypt(keyprime, key_length, key, K, kwnonce);
+    unsigned char S[crypto_sign_BYTES];
+    amagus_random(K, key_length);
+    unsigned char *passwctxt[crypto_box_SEALBYTES + key_length];
+    crypto_box_seal(passwctxt, K, key_length, pkB);
+    crypto_sign_detached(S, NULL, passwctxt, crypto_box_SEALBYTES + key_length, Ssk);
+    manja_kdf(K, key_length, key, key_length, kdf_salt, salt_len, kdf_iterations);
     infile = fopen(inputfile, "rb");
     outfile = fopen(outputfile, "wb");
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
     fseek(infile, 0, SEEK_SET);
-    fwrite(password_ctxt, 1, mask_bytes, outfile);
-    fwrite(Y, 1, mask_bytes, outfile);
-    fwrite(sign_ctxt, 1, Sbytes, outfile);
-    fwrite(kwnonce, 1, keywrap_ivlen, outfile);
+    fwrite(S, 1, crypto_sign_BYTES, outfile);
+    fwrite(passwctxt, 1, crypto_box_SEALBYTES + key_length, outfile);
     fwrite(iv, 1, nonce_length, outfile);
-    fwrite(K, 1, key_length, outfile);
 
     struct zander_state state;
     uint64_t xl;
     uint64_t xr;
     uint64_t blocks = datalen / bufsize;
+    //int extrabytes = datalen % blocksize;
     int extrabytes = blocksize - (datalen % blocksize);
     int extra = datalen % bufsize;
     if (extra != 0) {
         blocks += 1;
     }
+    if (datalen < bufsize) {
+        blocks = 1;
+    }
     int c = 0;
     int b;
     uint64_t i;
-    zgen_subkeys(&state, keyprime, key_length, iv, nonce_length, z2rounds);
-    zgen_sbox(&state, keyprime, key_length);
+    zgen_subkeys(&state, key, key_length, iv, nonce_length, z2rounds);
+    zgen_sbox(&state, key, key_length);
     for (i = 0; i < blocks; i++) {
         if ((i == (blocks - 1)) && (extra != 0)) {
             bufsize = extra;
         }
         fread(&buffer, 1, bufsize, infile);
         c = 0;
-	if (i == (blocks - 1)) {
+        if ((i == (blocks - 1)) && (extra != 0)) {
             for (int p = 0; p < extrabytes; p++) {
                 buffer[(bufsize+extrabytes-1)-p] = (unsigned char *)extrabytes;
-	    }
+            }
             bufsize = bufsize + extrabytes;
-	}
+        }
         int bblocks = bufsize / blocksize;
         int bextra = bufsize % blocksize;
         if (bextra != 0) {
@@ -354,24 +339,21 @@ void * zander2_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
         }
         fwrite(buffer, 1, bufsize, outfile);
     }
-    close(infile);
+    fclose(infile);
     fclose(outfile);
     manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
     ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int keywrap_ivlen, int mask_bytes, int bufsize, unsigned char * passphrase) {
-    struct qloq_ctx ctx;
-    struct qloq_ctx dummy_ctx;
-    struct qloq_ctx sign_ctx;
-    BIGNUM *tmp;
-    BIGNUM *tmpS;
-    BIGNUM *BNctxt;
-    tmp = BN_new();
-    tmpS = BN_new();
-    BNctxt = BN_new();
-    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, &ctx, &dummy_ctx);
-    load_pkfile(keyfile2, &dummy_ctx, &sign_ctx);
+void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len, int bufsize, unsigned char * passphrase) {
+    unsigned char pk[crypto_box_PUBLICKEYBYTES];
+    unsigned char sk[crypto_box_SECRETKEYBYTES];
+    unsigned char Spk[crypto_sign_PUBLICKEYBYTES];
+    unsigned char Ssk[crypto_sign_SECRETKEYBYTES];
+    unsigned char SpkB[crypto_sign_PUBLICKEYBYTES];
+    unsigned char pkB[crypto_box_PUBLICKEYBYTES];
+    zander3_cbc_decrypt_kf(keyfile1, 64, 32, 32, kdf_iterations, kdf_salt, 16, 32, passphrase, pk, crypto_box_PUBLICKEYBYTES, sk, crypto_box_SECRETKEYBYTES, Spk, crypto_sign_PUBLICKEYBYTES, Ssk, crypto_sign_SECRETKEYBYTES);
+    load_pkfile(keyfile2, pkB, crypto_box_PUBLICKEYBYTES, SpkB, crypto_sign_PUBLICKEYBYTES);
 
     int blocksize = 16;
     FILE *infile, *outfile;
@@ -382,39 +364,29 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     unsigned char mac_key[key_length];
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
-    unsigned char *passtmp[mask_bytes];
-    unsigned char *Ytmp[mask_bytes];
-    unsigned char *signtmp[mask_bytes];
-    unsigned char *kwnonce[keywrap_ivlen];
+    unsigned char *passtmp[crypto_box_SEALBYTES + key_length];
+    unsigned char S[crypto_sign_BYTES];
     infile = fopen(inputfile, "rb");
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
-    datalen = datalen - key_length - mac_length - nonce_length - keywrap_ivlen - mask_bytes - mask_bytes - mask_bytes;
+    datalen = datalen - key_length - mac_length - nonce_length - crypto_box_SEALBYTES - crypto_sign_BYTES;
     fseek(infile, 0, SEEK_SET);
     fread(&mac, 1, mac_length, infile);
-    fread(passtmp, 1, mask_bytes, infile);
-    fread(Ytmp, 1, mask_bytes, infile);
-    fread(signtmp, 1, mask_bytes, infile);
-    fread(kwnonce, 1, keywrap_ivlen, infile);
+    fread(S, 1, crypto_sign_BYTES, infile);
+    fread(passtmp, 1, crypto_box_SEALBYTES + key_length, infile);
     fread(iv, 1, nonce_length, infile);
-    fread(keyprime, 1, key_length, infile);
-    BN_bin2bn(passtmp, mask_bytes, tmp);
-    decloak(&ctx, BNctxt, tmp);
-    int ctxtbytes = BN_num_bytes(BNctxt);
-    unsigned char password[ctxtbytes];
-    BN_bn2bin(BNctxt, password);
-    unsigned char *passkey[password_len];
-    mypad_decrypt(passtmp, password, ctxtbytes, Ytmp);
-    memcpy(passkey, passtmp, password_len);
-    BN_bin2bn(signtmp, mask_bytes, tmpS);
-    if (verify(&sign_ctx, tmp, tmpS) != 0) {
-        printf("Error: Signature verification failed. Message is not authentic.\n");
-        exit(2);
+    if (crypto_sign_verify_detached(S, passtmp, crypto_box_SEALBYTES + key_length, SpkB) == 0) {
+        if (crypto_box_seal_open(keyprime, passtmp, crypto_box_SEALBYTES + key_length, pk, sk) != 0) {
+            printf("Error: Public key decryption failed.\n");
+            exit(-1);
+        }
     }
-
-    manja_kdf(passkey, password_len, key, key_length, kdf_salt, salt_len, kdf_iterations);
+    else {
+         printf("Error: Signature verification failed. Message is not authentic.\n");
+         exit(-1);
+    }
+    manja_kdf(keyprime, key_length, key, key_length, kdf_salt, salt_len, kdf_iterations);
     manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
-    key_wrap_decrypt(keyprime, key_length, key, kwnonce);
 
     struct zander_state state;
     int count = 0;
@@ -435,9 +407,9 @@ void * zander2_cbc_decrypt(char *keyfile1, char *keyfile2, char * inputfile, cha
     if (ganja_hmac_verify(inputfile, mac_key, key_length) == 0) {
         outfile = fopen(outputfile, "wb");
         infile = fopen(inputfile, "rb");
-        fseek(infile, (mac_length + keywrap_ivlen + nonce_length + key_length + (mask_bytes*3)), SEEK_SET);
-        zgen_subkeys(&state, keyprime, key_length, iv, nonce_length, z2rounds);
-        zgen_sbox(&state, keyprime, key_length);
+        fseek(infile, (mac_length + nonce_length + key_length + crypto_box_SEALBYTES + crypto_sign_BYTES), SEEK_SET);
+        zgen_subkeys(&state, key, key_length, iv, nonce_length, z2rounds);
+        zgen_sbox(&state, key, key_length);
         for (i = 0; i < blocks; i++) {
             if (i == (blocks - 1) && (extra != 0)) {
                 bufsize = extra;
