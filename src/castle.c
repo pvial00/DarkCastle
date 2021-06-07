@@ -12,17 +12,17 @@
 #include "ciphers/zanderfish3_cbc.c"
 #include "keygen/keygen.c"
 #include "ciphers/uvajda.c"
-#include "ciphers/amagus.c"
 #include "ciphers/darkcipher.c"
 #include "ciphers/zanderfish2_cbc.c"
 #include "ciphers/zanderfish2_ofb.c"
 #include "ciphers/zanderfish3_ofb.c"
 #include "ciphers/spock_cbc.c"
 #include "ciphers/qapla.c"
+#include "ciphers/akms_cbc.c"
 
 void usage() {
-    printf("DarkCastle v1.3 - by KryptoMagick\n\n");
-    printf("Algorithms:\n***********\n\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\namagus           256 bit\namagus512        512 bit\namagus1024       1024 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
+    printf("DarkCastle v1.3.1 - by KryptoMagick\n\n");
+    printf("Algorithms:\n***********\n\nakms             256 bit\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n");
 }
@@ -36,14 +36,15 @@ int main(int argc, char *argv[]) {
     char *encrypt_symbol = "-e";
     char *decrypt_symbol = "-d";
 
+    int akms_nonce_length = 16;
     int zanderfish2_nonce_length = 16;
     int zanderfish3_nonce_length = 32;
     int dark_nonce_length = 16;
     int uvajda_nonce_length = 16;
     int spock_nonce_length = 16;
-    int amagus_nonce_length = 16;
     int qapla_nonce_length = 16;
 
+    int akms_key_length = 32;
     int zanderfish_key_length = 32;
     int zanderfish2_key_length = 32;
     int zanderfish3_key_length = 32;
@@ -52,27 +53,24 @@ int main(int argc, char *argv[]) {
     int dark_key_length = 32;
     int uvajda_key_length = 32;
     int spock_key_length = 32;
-    int amagus_key_length = 32;
-    int amagus512_key_length = 64;
-    int amagus1024_key_length = 128;
     int qapla_key_length = 32;
 
+    int akms_mac_length = 32;
     int dark_mac_length = 32;
     int zanderfish_mac_length = 32;
     int zanderfish2_mac_length = 32;
     int zanderfish3_mac_length = 32;
     int uvajda_mac_length = 32;
     int spock_mac_length = 32;
-    int amagus_mac_length = 32;
     int qapla_mac_length = 32;
 
+    int akms_bufsize = 131072;
     int dark_bufsize = 32768;
     int uvajda_bufsize = 32768;
-    int amagus_bufsize = 655536;
     int zanderfish2_cbc_bufsize = 131072;
     int zanderfish3_bufsize = 262144;
     int zanderfish2_ofb_bufsize = 262144;
-    int spock_bufsize = 131072;
+    int spock_bufsize = 262144;
     int qapla_bufsize = 262144;
 
     if (sodium_init() == -1) {
@@ -126,30 +124,6 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
             uvajda_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, uvajda_key_length, uvajda_nonce_length, uvajda_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, uvajda_bufsize, passphrase);
-        }
-    }
-    else if (strcmp(algorithm, "amagus") == 0) {
-        if (strcmp(mode, encrypt_symbol) == 0) {
-            amagus_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, amagus_key_length, amagus_nonce_length, amagus_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, amagus_bufsize, passphrase);
-        }
-        else if (strcmp(mode, decrypt_symbol) == 0) {
-            amagus_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, amagus_key_length, amagus_nonce_length, amagus_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, amagus_bufsize, passphrase);
-        }
-    }
-    else if (strcmp(algorithm, "amagus512") == 0) {
-        if (strcmp(mode, encrypt_symbol) == 0) {
-            amagus_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, amagus512_key_length, amagus_nonce_length, amagus_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, amagus_bufsize, passphrase);
-        }
-        else if (strcmp(mode, decrypt_symbol) == 0) {
-            amagus_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, amagus512_key_length, amagus_nonce_length, amagus_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, amagus_bufsize, passphrase);
-        }
-    }
-    else if (strcmp(algorithm, "amagus1024") == 0) {
-        if (strcmp(mode, encrypt_symbol) == 0) {
-            amagus_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, amagus1024_key_length, amagus_nonce_length, amagus_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, amagus_bufsize, passphrase);
-        }
-        else if (strcmp(mode, decrypt_symbol) == 0) {
-            amagus_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, amagus1024_key_length, amagus_nonce_length, amagus_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, amagus_bufsize, passphrase);
         }
     }
     else if (strcmp(algorithm, "spock") == 0) {
@@ -214,6 +188,14 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
             qapla_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, qapla_key_length, qapla_nonce_length, qapla_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, qapla_bufsize, passphrase);
+        }
+    }
+    else if (strcmp(algorithm, "akms") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            akms_cbc_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, akms_key_length, akms_nonce_length, akms_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, akms_bufsize, passphrase);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            akms_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, akms_key_length, akms_nonce_length, akms_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, akms_bufsize, passphrase);
         }
     }
     printf("\n");

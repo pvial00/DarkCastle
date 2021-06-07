@@ -1,3 +1,5 @@
+v1.3.1 - Add AKMS Kuzynki CBC mode. Drop Amagus support.
+
 v1.3 - Migration to ECC via Curve25519 (libsodium).  Support for Zanderfish2 CTR mode was dropped.
 
 v1.2 - Implementation of Q'loQ-RSA signing keys, Signing and Verification correction
