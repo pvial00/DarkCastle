@@ -12,7 +12,7 @@ DarkCastle allows for general file encryption or file exchange between two peopl
 
 # Algorithms and authenticators
 
-All ciphers,are still undergoing testing, are recommended ciphers.  The top two recommended stream ciphers are Qapla and Amagus and the top two block ciphers are ZanderFish3 and ZanderFish2.
+Recommended Cipher is AKMS
 
 Fastest cipher is Uvajda
 
