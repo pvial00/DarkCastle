@@ -152,7 +152,7 @@ void darkdragonPreMixing0(struct darkdragon_state *state) {
 }
 
 void darkdragonPreMixing1(struct darkdragon_state *state) {
-    state->Z[10] = rotate(state->Z[10], 6);
+    state->Z[10] = rotate(state->Z[10], 7);
     state->Z[8] = rotate(state->Z[8], 12);
     state->Z[8] = (state->Z[8] + state->Z[7]) & 0xFFFFFFFF;
     state->Z[10] = state->Z[10] ^ state->Z[11];
