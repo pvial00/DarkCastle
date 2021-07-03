@@ -20,12 +20,13 @@
 #include "ciphers/qapla.c"
 #include "ciphers/akms_cbc.c"
 #include "ciphers/darkdragon.c"
+#include "ciphers/leia_cbc.c"
 
 void usage() {
-    printf("DarkCastle v1.3.3 - by KryptoMagick\n\n");
-    printf("Algorithms:\n***********\n\nakms             256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
+    printf("DarkCastle v1.3.4 - by KryptoMagick\n\n");
+    printf("Algorithms:\n***********\nakms             256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nleia-cbc         256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
-    printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n");
+    printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -44,6 +45,7 @@ int main(int argc, char *argv[]) {
     int uvajda_nonce_length = 16;
     int spock_nonce_length = 16;
     int qapla_nonce_length = 16;
+    int leia_nonce_length = 32;
 
     int akms_key_length = 32;
     int zanderfish_key_length = 32;
@@ -55,12 +57,14 @@ int main(int argc, char *argv[]) {
     int uvajda_key_length = 32;
     int spock_key_length = 32;
     int qapla_key_length = 32;
+    int leia_key_length = 32;
 
     int akms_mac_length = 32;
     int dark_mac_length = 32;
     int zanderfish_mac_length = 32;
     int zanderfish2_mac_length = 32;
     int zanderfish3_mac_length = 32;
+    int leia_mac_length = 32;
     int uvajda_mac_length = 32;
     int spock_mac_length = 32;
     int qapla_mac_length = 32;
@@ -70,6 +74,7 @@ int main(int argc, char *argv[]) {
     int uvajda_bufsize = 32768;
     int zanderfish2_cbc_bufsize = 131072;
     int zanderfish3_bufsize = 262144;
+    int leia_bufsize = 262144;
     int zanderfish2_ofb_bufsize = 262144;
     int spock_bufsize = 262144;
     int qapla_bufsize = 262144;
@@ -207,6 +212,13 @@ int main(int argc, char *argv[]) {
             darkdragon_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, dark_key_length, dark_nonce_length, dark_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, dark_bufsize, passphrase);
         }
     }
-    printf("\n");
+    else if (strcmp(algorithm, "leia-cbc") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            leia_cbc_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, leia_key_length, leia_nonce_length, leia_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, leia_bufsize, passphrase);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            leia_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, leia_key_length, leia_nonce_length, leia_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, leia_bufsize, passphrase);
+        }
+    }
     return 0;
 }
