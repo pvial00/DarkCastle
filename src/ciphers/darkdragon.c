@@ -141,6 +141,8 @@ uint32_t darkdragonH3(struct darkdragon_state *state, uint32_t w0, uint32_t w1) 
 }
 
 void darkdragonPreMixing0(struct darkdragon_state *state) {
+    state->Z[11] = rotate(state->Z[11], 16);
+    state->Z[9] = rotate(state->Z[9], 31);
     state->Z[9] = (state->Z[9] + state->Z[0]) & 0xFFFFFFFF;
     state->Z[11] = state->Z[11] ^ state->Z[2];
     state->Z[5] = (state->Z[5] + state->Z[8]) & 0xFFFFFFFF;
@@ -150,6 +152,8 @@ void darkdragonPreMixing0(struct darkdragon_state *state) {
 }
 
 void darkdragonPreMixing1(struct darkdragon_state *state) {
+    state->Z[10] = rotate(state->Z[10], 6);
+    state->Z[8] = rotate(state->Z[8], 12);
     state->Z[8] = (state->Z[8] + state->Z[7]) & 0xFFFFFFFF;
     state->Z[10] = state->Z[10] ^ state->Z[11];
     state->Z[4] = (state->Z[4] + state->Z[5]) & 0xFFFFFFFF;
@@ -187,15 +191,11 @@ void darkdragonPostMixing1(struct darkdragon_state *state) {
 }
 
 void darkdragonPostMixing2(struct darkdragon_state *state) {
-    state->Z[10] = rotate(state->Z[10], 6);
-    state->Z[8] = rotate(state->Z[8], 12);
     state->Z[8] = (state->Z[8] + state->Z[11]) & 0xFFFFFFFF;
     state->Z[10] = state->Z[10] ^ state->Z[9];
 }
 
 void darkdragonPostMixing3(struct darkdragon_state *state) {
-    state->Z[11] = rotate(state->Z[11], 16);
-    state->Z[9] = rotate(state->Z[9], 31);
     state->Z[11] = (state->Z[10] + state->Z[10]) & 0xFFFFFFFF;
     state->Z[9] = state->Z[9] ^ state->Z[10];
 }
