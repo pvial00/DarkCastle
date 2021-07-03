@@ -19,10 +19,11 @@
 #include "ciphers/spock_cbc.c"
 #include "ciphers/qapla.c"
 #include "ciphers/akms_cbc.c"
+#include "ciphers/darkdragon.c"
 
 void usage() {
-    printf("DarkCastle v1.3.1 - by KryptoMagick\n\n");
-    printf("Algorithms:\n***********\n\nakms             256 bit\ndark             256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
+    printf("DarkCastle v1.3.2 - by KryptoMagick\n\n");
+    printf("Algorithms:\n***********\n\nakms             256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n");
 }
@@ -196,6 +197,14 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
             akms_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, akms_key_length, akms_nonce_length, akms_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, akms_bufsize, passphrase);
+        }
+    }
+    else if (strcmp(algorithm, "darkdragon") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            darkdragon_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, dark_key_length, dark_nonce_length, dark_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, dark_bufsize, passphrase);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            darkdragon_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, dark_key_length, dark_nonce_length, dark_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, dark_bufsize, passphrase);
         }
     }
     printf("\n");

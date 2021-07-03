@@ -9,7 +9,7 @@ struct dark_state {
     uint32_t c;
 };
 
-uint32_t rotate(uint32_t a, uint32_t b) {
+uint32_t rotate(uint32_t a, int b) {
     return ((a << b) | (a >> (32 - b)));
 }
 
