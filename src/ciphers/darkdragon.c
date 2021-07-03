@@ -196,8 +196,8 @@ void darkdragonPostMixing2(struct darkdragon_state *state) {
 }
 
 void darkdragonPostMixing3(struct darkdragon_state *state) {
-    state->Z[11] = (state->Z[10] + state->Z[10]) & 0xFFFFFFFF;
-    state->Z[9] = state->Z[9] ^ state->Z[10];
+    state->Z[11] = (state->Z[11] + state->Z[10]) & 0xFFFFFFFF;
+    state->Z[9] = state->Z[9] ^ state->Z[8];
 }
 
 void darkdragonOutput(struct darkdragon_state *state) {
