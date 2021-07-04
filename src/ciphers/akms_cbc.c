@@ -123,47 +123,44 @@ void SubBytes(struct akmsState *state) {
 }
 
 void InvSubBytes(struct akmsState *state) {
-    uint8_t tmp;
     for (int q = 3; q != -1; q--) {
         for (int i = 3; i != -1; i--) {
             state->M[q][i] = akmsSI0[((akmsSI0[state->M[q][i]] ^ state->M[q][(i + 1) & 0x03]) * akmsAI0[state->M[q][(i - 1) & 0x03]]) & 0xFF];
         }
     }
 }
-    
-void shiftRow(struct akmsState *state, int row, int shift) {
-    int tmp;
-    int x;
-    for (x = 0; x < 4; x++) {
-        for (int y = 0; y < shift; y++) {
-            tmp = state->M[x][row];
-            state->M[x][row] = state->M[(x + 1) & 0x03][row];
-            state->M[(x + 1) & 0x03][row] = tmp;
+
+void shiftRow(uint8_t *block, int blocklen, int shift) {
+    uint8_t tmp; 
+    for (int x = 0; x < shift; x++) {
+        for (int y = blocklen - 1; y != 0; y--) {
+            tmp = block[y];
+            block[y] = block[(y + 1) & 0x03];
+            block[(y + 1) & 0x03] = tmp;
         }
     }
 }
 
-void InvshiftRow(struct akmsState *state, int row, int shift) {
-    int tmp;
-    int x;
-    for (x = 3; x != -1; x--) {
-        for (int y = 0; y < shift; y++) {
-            tmp = state->M[x][row];
-            state->M[x][row] = state->M[(x + 1) & 0x03][row];
-            state->M[(x + 1) & 0x03][row] = tmp;
+void InvShiftRow(uint8_t *block, int blocklen, int shift) {
+    uint8_t tmp;
+    for (int x = 0; x < shift; x++) {
+        for (int y = 0; y < blocklen - 1; y++) {
+            tmp = block[y];
+            block[y] = block[(y + 1) & 0x03];
+            block[(y + 1) & 0x03] = tmp;
         }
     }
 }
 
 void ShiftRows(struct akmsState *state) {
-    for (int x = 0; x < 4; x++) {
-        shiftRow(state, x, akmsSR[x]);
+    for (int x = 1; x < 4; x++) {
+        shiftRow(state->M[x], 4, akmsSR[x]);
     }
 }
 
 void InvShiftRows(struct akmsState *state) {
-    for (int x = 3; x != -1; x--) {
-        InvshiftRow(state, x, akmsSR[x]);
+    for (int x = 3; x != 0; x--) {
+        InvShiftRow(state->M[x], 4, akmsSR[x]);
     }
 }
 
