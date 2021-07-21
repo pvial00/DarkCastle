@@ -22,9 +22,10 @@
 #include "ciphers/akms_cbc.c"
 #include "ciphers/darkdragon.c"
 #include "ciphers/leia_cbc.c"
+#include "ciphers/herne_cbc.c"
 
 void usage() {
-    printf("DarkCastle v1.3.7 - by KryptoMagick\n\n");
+    printf("DarkCastle v1.3.8 - by KryptoMagick\n\n");
     printf("Algorithms:\n***********\nalbion           256 bit\nakms             256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nleia-cbc         256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n\n");
@@ -233,6 +234,14 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
             albion_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, beleth_mac_length, beleth_iv_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
+        }
+    }
+    else if (strcmp(algorithm, "herne") == 0) {
+        if (strcmp(mode, encrypt_symbol) == 0) {
+            herne_cbc_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, beleth_mac_length, beleth_iv_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
+        }
+        else if (strcmp(mode, decrypt_symbol) == 0) {
+            herne_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, beleth_mac_length, beleth_iv_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
         }
     }
     printf("\n");
