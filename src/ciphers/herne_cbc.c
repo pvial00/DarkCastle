@@ -1,7 +1,5 @@
 /* KryptoMagick Herne Cipher [2021] */
 
-int herneIP[32] = {10, 0, 31, 20, 2, 22, 1, 6, 17, 4, 23, 13, 26, 8, 21, 14, 28, 7, 27, 25, 11, 16, 5, 30, 9, 19, 15, 3, 29, 18, 24, 12};
-
 uint32_t herneC0[8] = {0xd419dd28, 0xe2be508d, 0xc7d77bcd, 0xf92730ad, 0xba943336, 0xd9700b94, 0xe89147b7, 0xd835c940};
 
 struct herneState {
