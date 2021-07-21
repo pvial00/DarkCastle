@@ -26,7 +26,7 @@
 
 void usage() {
     printf("DarkCastle v1.3.8 - by KryptoMagick\n\n");
-    printf("Algorithms:\n***********\nalbion           256 bit\nakms             256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nleia-cbc         256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
+    printf("Algorithms:\n***********\nalbion           256 bit\nakms             256 bit\nherne            256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nleia-cbc         256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n\n");
 }
