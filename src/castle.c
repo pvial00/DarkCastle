@@ -11,6 +11,7 @@
 #include "hmac/ghmac.c"
 #include "ciphers/zanderfish3_cbc.c"
 #include "keygen/keygen.c"
+#include "ciphers/albion_cbc.c"
 #include "ciphers/uvajda.c"
 #include "ciphers/darkcipher.c"
 #include "ciphers/zanderfish2_cbc.c"
@@ -21,10 +22,9 @@
 #include "ciphers/akms_cbc.c"
 #include "ciphers/darkdragon.c"
 #include "ciphers/leia_cbc.c"
-#include "ciphers/albion_cbc.c"
 
 void usage() {
-    printf("DarkCastle v1.3.6 - by KryptoMagick\n\n");
+    printf("DarkCastle v1.3.7 - by KryptoMagick\n\n");
     printf("Algorithms:\n***********\nalbion           256 bit\nakms             256 bit\ndark             256 bit\ndarkdragon       256 bit\nuvajda           256 bit\nspock            256 bit\nqapla            256 bit\nleia-cbc         256 bit\nzanderfish2-cbc  256 bit\nzanderfish2-ofb  256 bit\nzanderfish3      256 bit\nzanderfish3-512  512 bit\nzanderfish3-1024 1024 bit\nzanderfish3-ofb  256 bit\n\n");
     printf("Usage:\ncastle <algorithm> -e <input file> <output file> <public keyfile> <secret keyfile>\n");
     printf("castle <algorithm> -d <input file> <output file> <secret keyfile> <public keyfile>\n\n");
@@ -72,6 +72,8 @@ int main(int argc, char *argv[]) {
     int uvajda_mac_length = 32;
     int spock_mac_length = 32;
     int qapla_mac_length = 32;
+    int beleth_mac_length = 32;
+    int beleth_iv_length = 32;
 
     int albion_bufsize = 131072;
     int akms_bufsize = 131072;
@@ -227,10 +229,10 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp(algorithm, "albion") == 0) {
         if (strcmp(mode, encrypt_symbol) == 0) {
-            albion_cbc_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, albion_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
+            albion_cbc_encrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, beleth_mac_length, beleth_iv_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
         }
         else if (strcmp(mode, decrypt_symbol) == 0) {
-            albion_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, albion_mac_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
+            albion_cbc_decrypt(keyfile1_name, keyfile2_name, infile_name, outfile_name, albion_key_length, albion_nonce_length, beleth_mac_length, beleth_iv_length, kdf_iterations, kdf_salt, salt_len, password_len, albion_bufsize, passphrase);
         }
     }
     printf("\n");

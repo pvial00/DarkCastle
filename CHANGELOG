@@ -1,4 +1,6 @@
-v1.3.6 - Add  Albion CBC Block Cipher (Fix AKMS KSA)
+v1.3.7 - Add Beleth Authentication for Albion only
+
+v1.3.6 - Add Albion CBC Block Cipher (Fix AKMS KSA)
 
 v1.3.1 - Add AKMS Kuzynki CBC mode. Drop Amagus support.
 

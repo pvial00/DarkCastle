@@ -286,7 +286,72 @@ void albionCBCSaveDec2(struct albionState *state) {
     memcpy(state->last, state->next, 8*(sizeof(uint32_t)));
 }
 
-void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int bufsize, unsigned char * passphrase) {
+/* KryptoMagick Beleth Authentication Algorithm [2021] */
+
+struct belethState {
+    struct albionState A;
+    uint32_t M[8];
+    unsigned char MAC[32];
+};
+
+void loadInBlockBLT(struct albionState *state, unsigned char *block) {
+    int c = 0;
+    for (int q = 0; q < 8; q++) {
+        state->B[q] ^= (block[c] << 24) + (block[c+1] << 16) + (block[c+2] << 8) + block[c+3];
+        c += 4;
+    }
+}
+
+void belethAuthInit(struct belethState *state, unsigned char *key, int keylen, unsigned char *iv, int ivlen) {
+    state->A.rounds = 14;
+    state->A.blocklen = 32;
+    memset(state->M, 0, 8*(sizeof(uint32_t)));
+    memset(state->MAC, 0, 32*(sizeof(unsigned char)));
+    memset(state->A.B, 0, 8*(sizeof(uint32_t)));
+    loadInBlockBLT(&state->A, iv);
+    albiongenRoundKeys(&state->A, key, keylen);
+};
+
+void belethAuthUpdate(struct belethState *state, uint8_t *block) {
+    uint32_t tmp[8];
+    loadInBlockBLT(&state->A, block);
+    memcpy(tmp, state->A.B, 8*sizeof(uint32_t));
+    albionBlockEnc(&state->A);
+    for (int i = 0; i < 8; i++) {
+        state->M[i] ^= state->A.B[i];
+        state->M[i] += tmp[i];
+    }
+}
+
+void belethAuthFinal(struct belethState *state) {
+    unsigned char block[32] = {0};
+    belethAuthUpdate(state, block);
+    int c = 0;
+    for (int q = 0; q < 8; q++) {
+        state->MAC[c] = state->M[q] >> 24;
+        state->MAC[c+1] = state->M[q] >> 16;
+        state->MAC[c+2] = state->M[q] >> 8;
+        state->MAC[c+3] = state->M[q];
+        c += 4;
+    }
+}
+
+int belethAuthVerify(struct belethState *state, unsigned char *m) {
+    unsigned char tmpA = 0;
+    unsigned char tmpB = 0;
+    for (int i = 0; i < 32; i++) {
+        tmpA ^= state->MAC[i];
+        tmpB ^= m[i];
+    }
+    if (tmpA == tmpB) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
+}
+
+void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int mac_ivlength, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len,  int bufsize, unsigned char * passphrase) {
     unsigned char pk[crypto_box_PUBLICKEYBYTES];
     unsigned char sk[crypto_box_SECRETKEYBYTES];
     unsigned char Spk[crypto_sign_PUBLICKEYBYTES];
@@ -298,7 +363,10 @@ void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char
     memset(buffer, 0, bufsize);
     unsigned char iv[nonce_length];
     amagus_random(&iv, nonce_length);
+    unsigned char maciv[mac_ivlength];
+    amagus_random(&maciv, mac_ivlength);
     unsigned char mac[mac_length];
+    memset(mac, 0, mac_length);
     unsigned char mac_key[key_length];
     unsigned char key[key_length];
     unsigned char *keyprime[key_length];
@@ -311,16 +379,20 @@ void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char
     crypto_box_seal(passwctxt, K, key_length, pkB);
     crypto_sign_detached(S, NULL, passwctxt, crypto_box_SEALBYTES + key_length, Ssk);
     manja_kdf(K, key_length, key, key_length, kdf_salt, salt_len, kdf_iterations);
+    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
     infile = fopen(inputfile, "rb");
     outfile = fopen(outputfile, "wb");
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
     fseek(infile, 0, SEEK_SET);
+    fwrite(mac, 1, mac_length, outfile);
+    fwrite(maciv, 1, mac_ivlength, outfile);
     fwrite(S, 1, crypto_sign_BYTES, outfile);
     fwrite(passwctxt, 1, crypto_box_SEALBYTES + key_length, outfile);
     fwrite(iv, 1, nonce_length, outfile);
 
     struct albionState state;
+    struct belethState bltstate;
     state.blocklen = 32;
     state.rounds = 14;
     uint8_t block[32] = {0};
@@ -328,7 +400,6 @@ void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char
     uint64_t blocks = datalen / bufsize;
     int extrabytes = blocksize - (datalen % blocksize);
     int extra = datalen % bufsize;
-    int v = blocksize;
     if (extra != 0) {
         blocks += 1;
     }
@@ -340,6 +411,7 @@ void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char
     uint64_t i;
     loadInIVALBI(&state, iv);
     albiongenRoundKeys(&state, key, key_length);
+    belethAuthInit(&bltstate, mac_key, key_length, maciv, mac_ivlength);
     for (i = 0; i < blocks; i++) {
         if ((i == (blocks - 1)) && (extra != 0)) {
             bufsize = extra;
@@ -369,6 +441,7 @@ void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char
             albionBlockEnc(&state);
             albionCBCSaveEnc(&state);
             loadOutBlock(&state, block);
+            belethAuthUpdate(&bltstate, block);
             for (int x = 0; x < state.blocklen; x++) {
                 buffer[c+x] = (unsigned char)block[x];
             }
@@ -376,13 +449,14 @@ void * albion_cbc_encrypt(char *keyfile1, char *keyfile2, char * inputfile, char
         }
         fwrite(buffer, 1, bufsize, outfile);
     }
+    belethAuthFinal(&bltstate);
+    fseek(outfile, 0, SEEK_SET);
+    fwrite(bltstate.MAC, 1, mac_length, outfile);
     fclose(infile);
     fclose(outfile);
-    manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
-    ganja_hmac(outputfile, ".tmp", mac_key, key_length);
 }
 
-void * albion_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len, int bufsize, unsigned char * passphrase) {
+void * albion_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, char *outputfile, int key_length, int nonce_length, int mac_length, int mac_ivlength, int kdf_iterations, unsigned char * kdf_salt, int salt_len, int password_len, int bufsize, unsigned char * passphrase) {
     unsigned char pk[crypto_box_PUBLICKEYBYTES];
     unsigned char sk[crypto_box_SECRETKEYBYTES];
     unsigned char Spk[crypto_sign_PUBLICKEYBYTES];
@@ -396,6 +470,7 @@ void * albion_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, ch
     unsigned char buffer[bufsize];
     memset(buffer, 0, bufsize);
     unsigned char iv[nonce_length];
+    unsigned char maciv[mac_ivlength];
     unsigned char mac[mac_length];
     unsigned char mac_key[key_length];
     unsigned char key[key_length];
@@ -405,14 +480,14 @@ void * albion_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, ch
     infile = fopen(inputfile, "rb");
     fseek(infile, 0, SEEK_END);
     uint64_t datalen = ftell(infile);
-    int extrabytes = 16 - (datalen % 16);
     fseek(infile, 0, SEEK_SET);
 
-    fread(&mac, 1, mac_length, infile);
+    fread(mac, 1, mac_length, infile);
+    fread(maciv, 1, mac_ivlength, infile);
     fread(S, 1, crypto_sign_BYTES, infile);
     fread(passtmp, 1, crypto_box_SEALBYTES + key_length, infile);
     fread(iv, 1, nonce_length, infile);
-    datalen = datalen - key_length - mac_length - nonce_length - crypto_box_SEALBYTES - crypto_sign_BYTES;
+    datalen = datalen - key_length - mac_length - mac_ivlength - nonce_length - crypto_box_SEALBYTES - crypto_sign_BYTES;
     if (crypto_sign_verify_detached(S, passtmp, crypto_box_SEALBYTES + key_length, SpkB) == 0) {
         if (crypto_box_seal_open(keyprime, passtmp, crypto_box_SEALBYTES + key_length, pk, sk) != 0) {
             printf("Error: Public key decryption failed.\n");
@@ -427,6 +502,7 @@ void * albion_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, ch
     manja_kdf(key, key_length, mac_key, key_length, kdf_salt, salt_len, kdf_iterations);
 
     struct albionState state;
+    struct belethState bltstate;
     state.blocklen = 32;
     state.rounds = 14;
     int count = 0;
@@ -444,58 +520,59 @@ void * albion_cbc_decrypt(char * keyfile1, char * keyfile2, char * inputfile, ch
     int b;
     uint64_t i;
     fclose(infile);
-    if (ganja_hmac_verify(inputfile, mac_key, key_length) == 0) {
-        outfile = fopen(outputfile, "wb");
-        infile = fopen(inputfile, "rb");
-        fseek(infile, (mac_length + nonce_length + key_length +  crypto_box_SEALBYTES + crypto_sign_BYTES), SEEK_SET);
-        loadInIVALBI(&state, iv);
-        albiongenRoundKeys(&state, key, key_length);
-        for (i = 0; i < blocks; i++) {
-            if (i == (blocks - 1) && (extra != 0)) {
-                bufsize = extra;
-            }
-            fread(&buffer, 1, bufsize, infile);
-            c = 0;
-            int bblocks = bufsize / blocksize;
-            int bextra = bufsize % blocksize;
-            if (bextra != 0) {
-                bblocks += 1;
-            }
-            for (b = 0; b < bblocks; b++) {
-                for (int x = 0; x < state.blocklen; x++) {
-                    block[x] = (uint8_t)buffer[c+x];
-                }
-                loadInBlock(&state, block);
-                albionCBCSaveDec(&state);
-                albionBlockDec(&state);
-                albionCBC(&state);
-                albionCBCSaveDec2(&state);
-                loadOutBlock(&state, block);
-                for (int x = 0; x < state.blocklen; x++) {
-                    buffer[c+x] = (unsigned char)block[x];
-                }
-                c += state.blocklen;
-            }
-
-	    if (i == (blocks - 1)) {
-	        int padcheck = buffer[bufsize - 1];
-	        int g = bufsize - 1;
-	        for (int p = 0; p < padcheck; p++) {
-                    if ((int)buffer[g] == padcheck) {
-                        count += 1;
-		    }
-		    g = g - 1;
-                }
-                if (padcheck == count) {
-                    bufsize = bufsize - count;
-                }
-	    }
-            fwrite(buffer, 1, bufsize, outfile);
+    belethAuthInit(&bltstate, mac_key, key_length, maciv, mac_ivlength);
+    outfile = fopen(outputfile, "wb");
+    infile = fopen(inputfile, "rb");
+    fseek(infile, (mac_length + mac_ivlength + nonce_length + key_length +  crypto_box_SEALBYTES + crypto_sign_BYTES), SEEK_SET);
+    loadInIVALBI(&state, iv);
+    albiongenRoundKeys(&state, key, key_length);
+    for (i = 0; i < blocks; i++) {
+        if (i == (blocks - 1) && (extra != 0)) {
+            bufsize = extra;
         }
-        fclose(infile);
-        fclose(outfile);
-    } 
-    else {
-        printf("Error: Message has been tampered with.\n");
+        fread(&buffer, 1, bufsize, infile);
+        c = 0;
+        int bblocks = bufsize / blocksize;
+        int bextra = bufsize % blocksize;
+        if (bextra != 0) {
+            bblocks += 1;
+        }
+        for (b = 0; b < bblocks; b++) {
+            for (int x = 0; x < state.blocklen; x++) {
+                block[x] = (uint8_t)buffer[c+x];
+            }
+            belethAuthUpdate(&bltstate, block);
+            loadInBlock(&state, block);
+            albionCBCSaveDec(&state);
+            albionBlockDec(&state);
+            albionCBC(&state);
+            albionCBCSaveDec2(&state);
+            loadOutBlock(&state, block);
+            for (int x = 0; x < state.blocklen; x++) {
+                buffer[c+x] = (unsigned char)block[x];
+            }
+            c += state.blocklen;
+        }
+
+        if (i == (blocks - 1)) {
+            int padcheck = buffer[bufsize - 1];
+	    int g = bufsize - 1;
+	    for (int p = 0; p < padcheck; p++) {
+                if ((int)buffer[g] == padcheck) {
+                    count += 1;
+	        }
+	        g = g - 1;
+            }
+            if (padcheck == count) {
+                bufsize = bufsize - count;
+            }
+        }
+        fwrite(buffer, 1, bufsize, outfile);
     }
+    belethAuthFinal(&bltstate);
+    if (belethAuthVerify(&bltstate, mac) == 1) {
+        printf("Error: Message has been tampered with.\n");
+    };
+    fclose(infile);
+    fclose(outfile);
 }
